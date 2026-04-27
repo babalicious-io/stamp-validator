@@ -1,45 +1,49 @@
-# Core Development Rules
+---
+alwaysApply: true
+---
+# Stamp Explorer Core Rules
 
-You are a senior expert developer in HTML, CSS and Javascript focusing on best practices, simple and concise code.
-Adhere to the latest HTML5 and CSS3 standards.
-You are an expert in Rust, async programming, and concurrent systems.
+Build a small, self-contained Internet Archive page that lets users look up Bitcoin Stamps by Bitcoin transaction hash. Prefer clear browser code and deterministic Rust/Wasm logic over framework or service complexity.
 
-## Key Principles
+## Project Constraints
 
-- You are creating HTML/CSS/JS app, with client-side WebAssembly (Wasm) environment for the Internet Archive.
-- All CSS and Javascript code must be self-contained in the document - no external files, scripts or libraries can be used.
-- CSS code in style tags (avoiding inline styles) and Javascript in body script tags.
-- Write clear, concise, and understandable responses with precise HTML/CSS/Javascript examples.
-- Use consistent sharp descriptive naming conventions for classes and IDs.
-- Validate HTML and CSS using W3C validators.
-- Comment complex CSS rules and HTML structures.
-- Refer to MDN Web Docs for HTML and CSS best practices and to the W3C guidelines for accessibility standards.
+- Keep the app portable for the Internet Archive: no CDN dependencies, tracking scripts, external CSS frameworks, or build-time assumptions that require a hosted backend.
+- During development, prefer split files such as `index.html`, `styles.css`, `app.js`, and `.wasm` assets for maintainability.
+- For Internet Archive release, either keep split files with relative paths or bundle CSS/JS into `index.html` when maximum portability is more important.
+- Load CSS, JS, and Wasm from the same IA item using relative paths; do not depend on third-party origins.
+- Treat the Bitcoin tx hash as untrusted input. Accept only 64-character hex strings, normalize casing, and show user-friendly errors.
+- Never include secrets, API keys, private endpoints, or write-capable wallet behavior in the page.
 
-## Code Structure
+## HTML, CSS, and JavaScript
 
-- Place all CSS in `<style>` tags within the `<head>` section
-- Place all JavaScript in `<script>` tags within the `<body>` section
-- Avoid inline styles unless absolutely necessary
-- Keep code self-contained and portable
+- Use semantic HTML5: `main`, `form`, `label`, `output`, `section`, and meaningful headings.
+- Keep UI accessible: associated labels, keyboard-operable controls, visible focus states, status text with `aria-live`, and sufficient contrast.
+- Use responsive CSS with flexbox/grid, relative units, and small-screen-first layout.
+- Avoid inline styles and global naming collisions; use descriptive class and ID names such as `stamp-search-form` and `stamp-result-card`.
+- Use modern vanilla JavaScript: `const`/`let`, `defer` for external scripts, modules only when compatible with the IA deployment plan, `fetch`, `async`/`await`, and small pure helper functions.
+- Render user-controlled data with `textContent`, not `innerHTML`, unless the HTML is fully trusted and sanitized.
+- Handle loading, empty, error, and successful states explicitly.
 
-## Responsive Design
+## Rust and WebAssembly
 
-- Use relative units: %, vw, vh for sizing
-- Implement media queries for different screen sizes
-- Use flexible layouts (flexbox, grid)
+- Write idiomatic Rust with `snake_case` functions/variables, `PascalCase` types, small modules, and explicit ownership boundaries.
+- Keep Rust/Wasm focused on deterministic work: tx hash validation, binary parsing, stamp metadata normalization, and reusable indexer logic.
+- Keep DOM access, network fetches, storage, and UI state in JavaScript unless there is a strong reason to expose them through Wasm bindings.
+- Use `Result` and `Option` for fallible paths; avoid `unwrap()`/`expect()` in code reachable from user input.
+- Prefer custom errors or `thiserror` for library code; convert errors crossing into JS into concise, user-safe messages.
+- Minimize Wasm size: avoid unnecessary crates/features, avoid panicking paths, and consider release builds with size optimization.
+- Avoid `unsafe` unless required by a Wasm binding or parser boundary, and document the invariant.
 
-## Code Quality
+## Async and Data Flow
 
-- Use semantic HTML5 elements
-- Write maintainable, readable code
-- Add comments for complex logic
-- Follow consistent indentation and formatting
-- Use descriptive variable and function names
+- Browser async work should be cancellable or race-safe: disable duplicate submits or ignore stale responses.
+- Add timeouts/retries only around network calls where failure modes are known; do not hide persistent data errors.
+- If reusing Rust indexer code that uses `tokio`, isolate browser-compatible logic behind a library layer and keep server-only async/database code out of the Wasm target.
+- Prefer structured data formats and parsers over ad hoc string manipulation for Bitcoin transaction and stamp metadata.
 
-## Testing Requirements
+## Testing and Verification
 
-- Test across different viewport sizes
-- Test across all browsers: Chromium, Safari, Firefox, Edge, Opera
-- Test across all operating systems: Windows, Linux, and Apple
-- Test across all devices: Android and Apple iOS
-- Ensure consistent rendering and functionality across all platforms
+- Test tx hash validation with valid, invalid length, non-hex, uppercase, lowercase, and whitespace cases.
+- Test Rust logic with unit tests and Wasm-compatible tests where practical.
+- Validate HTML/CSS with standard validators and check accessibility basics with keyboard navigation and screen-reader-friendly status updates.
+- Manually test in Chromium, Firefox, and Safari, plus narrow mobile viewport sizes.
