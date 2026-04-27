@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Look up Bitcoin Stamps by Bitcoin transaction hash."
+    >
+    <title>Stamp Explorer</title>
+    <link rel="stylesheet" href="./app.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero-section" aria-labelledby="page-title">
+        <p class="caption">Bitcoin Stamps</p>
+        <h1 id="page-title">Stamp Explorer</h1>
+        <p class="hero-copy">
+          Enter a Bitcoin transaction hash to inspect stamp metadata in a
+          portable browser-first interface.
+        </p>
+      </section>
+
+      <section class="search-panel" aria-labelledby="search-title">
+        <h2 id="search-title">Look Up A Stamp</h2>
+        <form class="stamp-search-form" id="stamp-search-form" novalidate>
+          <div class="form-field provider-field">
+            <label class="label" for="node-provider">Transaction data source</label>
+            <select id="node-provider" name="nodeProvider">
+              <option value="mempool" selected>mempool.space</option>
+              <option value="blockstream">Blockstream</option>
+              <option value="blockchain">Blockchain.com</option>
+              <option value="blockcypher">BlockCypher</option>
+              <option value="blockchair">Blockchair</option>
+            </select>
+            <p class="field-help">
+              The selected node only provides raw transaction data. Rust/Wasm
+              processes the stamp locally.
+            </p>
+          </div>
+
+          <div class="form-field">
+            <label class="label" for="tx-hash">Bitcoin transaction hash</label>
+            <input
+              id="tx-hash"
+              name="txHash"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              spellcheck="false"
+              minlength="64"
+              maxlength="64"
+              placeholder="64-character transaction hash"
+              aria-describedby="tx-hash-help tx-hash-error"
+              required
+            >
+            <p class="field-help" id="tx-hash-help">
+              Use a 64-character hexadecimal Bitcoin transaction hash.
+            </p>
+            <p class="field-error" id="tx-hash-error" role="alert"></p>
+          </div>
+
+          <button class="primary-button" type="submit">Search Stamp</button>
+        </form>
+
+        <output class="status-message" id="status-message" aria-live="polite">
+          Ready for a transaction hash.
+        </output>
+      </section>
+
+      <section class="result-section" aria-labelledby="result-title">
+        <h2 id="result-title">Result</h2>
+        <article class="stamp-result-card" id="stamp-result-card" hidden>
+          <div class="result-summary">
+            <p class="result-message" id="result-message"></p>
+            <p class="result-provider" id="result-provider"></p>
+          </div>
+
+          <figure class="media-preview" id="media-preview" hidden>
+            <div class="media-frame" id="media-frame"></div>
+            <figcaption id="media-caption"></figcaption>
+          </figure>
+
+          <h3>Metadata</h3>
+          <dl class="result-list" id="metadata-list"></dl>
+        </article>
+        <p class="empty-state" id="empty-state">
+          Search results will appear here after validation.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
