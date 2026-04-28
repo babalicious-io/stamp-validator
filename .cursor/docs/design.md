@@ -1,8 +1,3 @@
----
-description: Design tokens and UI style rules for the Stamp Explorer app
-alwaysApply: false
----
-
 # Design System
 
 Use a small, portable design system that works as plain HTML/CSS/JS on the Internet Archive. Do not add external font, icon, CSS framework, or CDN dependencies.
@@ -14,7 +9,7 @@ Use a small, portable design system that works as plain HTML/CSS/JS on the Inter
 
 ## Color Tokens
 
-Use the Tailwind color values from Material UI as project tokens. 
+Use the Tailwind color values from Material UI as project tokens.
 https://materialui.co/tailwindcolors
 
 Primary is orange, neutral is zinc.
@@ -32,7 +27,7 @@ Primary is orange, neutral is zinc.
     --color-primary-800: #9a3412;
     --color-primary-900: #7c2d12;
     --color-primary-950: #431407;
-    --color-primary-gradient: linear-gradient(to bottom right, var(--color-primary-300), var(--color-primary-800));
+    --color-primary-gradient: linear-gradient(to bottom right, var(--color-primary-100), var(--color-primary-600), var(--color-primary-800));
 
     --color-neutral-0 : #ffffff;
     --color-neutral-50: #fafafa;
@@ -80,7 +75,7 @@ Primary is orange, neutral is zinc.
 
 ```css
 
-/* ===== Keyboard focus — all focusable elements ===== */
+/* ===== Keyboard focus - all focusable elements ===== */
 :focus-visible {
   outline: var(--size-0-5) solid var(--color-primary-400);
   outline-offset: var(--size-0-5);
@@ -237,7 +232,7 @@ h2 {
     color: var(--color-primary-600);
 }
 
-/* ===== Helper teext ===== */
+/* ===== Helper text ===== */
 .field-help,
 .field-error,
 .status-message,

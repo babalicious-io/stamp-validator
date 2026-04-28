@@ -9,24 +9,25 @@
     >
     <title>Stamp Explorer</title>
     <link rel="stylesheet" href="./app.css">
+    <script src="./tx-flow-chart.js" defer></script>
     <script src="./app.js" defer></script>
   </head>
   <body>
-    <main class="app-shell">
-      <section class="hero-section" aria-labelledby="page-title">
-        <p class="caption">Bitcoin Stamps</p>
+    <main class="container-1">
+      <section class="container-2" aria-labelledby="page-title">
+        <p class="caption">On-Chain Validator</p>
         <h1 id="page-title">Stamp Explorer</h1>
-        <p class="hero-copy">
-          Enter a Bitcoin transaction hash to inspect stamp metadata in a
-          portable browser-first interface.
+        <p>
+          Search Stamps on-chain on Bitcoin by entering a transaction hash.<br>The explorer uses public Bitcoin nodes to provide raw transaction data and
+          decodes the stamp metadata for display.
         </p>
       </section>
 
-      <section class="search-panel" aria-labelledby="search-title">
+      <section class="container-2" aria-labelledby="search-title">
         <h2 id="search-title">Look Up A Stamp</h2>
-        <form class="stamp-search-form" id="stamp-search-form" novalidate>
+        <form class="container-grid-3" id="stamp-search-form" novalidate>
           <div class="form-field provider-field">
-            <label class="label" for="node-provider">Transaction data source</label>
+            <label class="label" for="node-provider">Bitcoin node</label>
             <select id="node-provider" name="nodeProvider">
               <option value="mempool" selected>mempool.space</option>
               <option value="blockstream">Blockstream</option>
@@ -34,10 +35,6 @@
               <option value="blockcypher">BlockCypher</option>
               <option value="blockchair">Blockchair</option>
             </select>
-            <p class="field-help">
-              The selected node only provides raw transaction data. Rust/Wasm
-              processes the stamp locally.
-            </p>
           </div>
 
           <div class="form-field">
@@ -55,35 +52,81 @@
               aria-describedby="tx-hash-help tx-hash-error"
               required
             >
-            <p class="field-help" id="tx-hash-help">
-              Use a 64-character hexadecimal Bitcoin transaction hash.
-            </p>
             <p class="field-error" id="tx-hash-error" role="alert"></p>
           </div>
-
+          <div class="form-field">
+            <label class="label">&nbsp;</label>
           <button class="primary-button" type="submit">Search Stamp</button>
+          </div>
         </form>
 
-        <output class="status-message" id="status-message" aria-live="polite">
+        <output class="message" id="status-message" aria-live="polite">
           Ready for a transaction hash.
         </output>
       </section>
 
-      <section class="result-section" aria-labelledby="result-title">
+      <section class="container-2" aria-labelledby="result-title">
         <h2 id="result-title">Result</h2>
-        <article class="stamp-result-card" id="stamp-result-card" hidden>
-          <div class="result-summary">
-            <p class="result-message" id="result-message"></p>
-            <p class="result-provider" id="result-provider"></p>
+        <article class="" id="stamp-result-card" hidden>
+          <div class="container-grid-2 result-detail-grid">
+            <div class="container-column result-visuals">
+              <div class="container-2 media-preview" id="media-preview" hidden>
+                <div class="media-frame" id="media-frame"></div>
+              </div>
+
+              <details class="container-3 collapsible stamp-base64-panel" id="stamp-base64-panel" hidden>
+                <summary class="container-row container-row--center collapsible-header">
+                  <h4>Image Encoding</h4>
+                  <span class="collapsible-toggle" aria-hidden="true">
+                    <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+                  </span>
+                </summary>
+                <dl class="result-list" id="stamp-base64-list"></dl>
+              </details>
+
+              <details class="container-3 collapsible transaction-flow" id="transaction-flow" open hidden>
+                <summary class="container-row container-row--center collapsible-header">
+                  <h4>Flow Chart</h4>
+                  <span class="collapsible-toggle" aria-hidden="true">
+                    <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+                  </span>
+                </summary>
+                <div class="transaction-flow-chart" id="transaction-flow-chart"></div>
+                <dl class="transaction-flow-counts" id="transaction-flow-counts">
+                  <div>
+                    <dt>Input</dt>
+                    <dd id="transaction-flow-input-count">0</dd>
+                  </div>
+                  <div>
+                    <dt>Output</dt>
+                    <dd id="transaction-flow-output-count">0</dd>
+                  </div>
+                </dl>
+              </details>
+            </div>
+
+            <div class="container-column metadata-panels">
+              <details class="container-3 collapsible" id="stamp-data-panel" open>
+                <summary class="container-row container-row--center collapsible-header">
+                  <h4>Stamp Details</h4>
+                  <span class="collapsible-toggle" aria-hidden="true">
+                    <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+                  </span>
+                </summary>
+                <dl class="result-list" id="stamp-data-list"></dl>
+              </details>
+
+              <details class="container-3 collapsible" id="bitcoin-data-panel" open>
+                <summary class="container-row container-row--center collapsible-header">
+                  <h4>Bitcoin Details</h4>
+                  <span class="collapsible-toggle" aria-hidden="true">
+                    <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+                  </span>
+                </summary>
+                <dl class="result-list" id="bitcoin-data-list"></dl>
+              </details>
+            </div>
           </div>
-
-          <figure class="media-preview" id="media-preview" hidden>
-            <div class="media-frame" id="media-frame"></div>
-            <figcaption id="media-caption"></figcaption>
-          </figure>
-
-          <h3>Metadata</h3>
-          <dl class="result-list" id="metadata-list"></dl>
         </article>
         <p class="empty-state" id="empty-state">
           Search results will appear here after validation.

@@ -5,30 +5,17 @@ const OP_CHECKMULTISIG: u8 = 0xae;
 
 #[derive(Debug, Clone)]
 pub struct ParsedTransaction {
-    pub txid: String,
-    pub inputs: Vec<InputInfo>,
-    pub outputs: Vec<OutputInfo>,
     pub payload: Option<Vec<u8>>,
     pub has_valid_pattern: bool,
     pub has_valid_data: bool,
     pub keyburn: u32,
     pub encoding_method: Option<String>,
+    pub vsize: usize,
 }
 
 #[derive(Debug, Clone)]
 pub struct InputInfo {
     pub prev_txid: String,
-    pub prev_vout: u32,
-    pub sequence: u32,
-}
-
-#[derive(Debug, Clone)]
-pub struct OutputInfo {
-    pub value: u64,
-    pub script_hex: String,
-    pub index: u32,
-    pub has_op_checkmultisig: bool,
-    pub keyburn: u32,
 }
 
 struct Cursor<'a> {
@@ -87,7 +74,7 @@ impl<'a> Cursor<'a> {
 
 pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> {
     let bytes = hex_to_bytes(raw_tx_hex)?;
-    let txid = double_sha256_txid_placeholder(&bytes);
+    let total_size = bytes.len();
     let mut cursor = Cursor::new(&bytes);
 
     cursor.read_u32_le()?;
@@ -102,24 +89,20 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
         marker_or_count as u64
     };
     let has_witness = marker_or_count == 0;
+    let stripped_prefix_size = if has_witness { 4 } else { 5 };
 
     let mut inputs = Vec::new();
     for _ in 0..input_count {
         let prev_txid_bytes = cursor.read_exact(32)?;
         let prev_txid = reverse_hex(prev_txid_bytes);
-        let prev_vout = cursor.read_u32_le()?;
+        cursor.read_u32_le()?;
         let script_len = cursor.read_varint()? as usize;
         cursor.read_exact(script_len)?;
-        let sequence = cursor.read_u32_le()?;
-        inputs.push(InputInfo {
-            prev_txid,
-            prev_vout,
-            sequence,
-        });
+        cursor.read_u32_le()?;
+        inputs.push(InputInfo { prev_txid });
     }
 
     let output_count = cursor.read_varint()?;
-    let mut outputs = Vec::new();
     let mut p2wsh_chunks = Vec::new();
     let mut payload = None;
     let mut has_valid_pattern = false;
@@ -128,11 +111,10 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
     let mut encoding_method = None;
 
     for output_index in 0..output_count {
-        let value = cursor.read_u64_le()?;
+        cursor.read_u64_le()?;
         let script_len = cursor.read_varint()? as usize;
         let script = cursor.read_exact(script_len)?;
         let has_op_checkmultisig = script.last() == Some(&OP_CHECKMULTISIG);
-        let mut output_keyburn = 0;
 
         if output_index > 0 && script.len() == 34 && script[0] == 0x00 && script[1] == 0x20 {
             has_valid_pattern = true;
@@ -146,20 +128,13 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
                 has_valid_pattern = true;
                 has_valid_data = true;
                 keyburn = 1;
-                output_keyburn = 1;
                 encoding_method = Some("MULTISIG".to_string());
             }
         }
-
-        outputs.push(OutputInfo {
-            value,
-            script_hex: bytes_to_hex(script),
-            index: output_index as u32,
-            has_op_checkmultisig,
-            keyburn: output_keyburn,
-        });
     }
 
+    let witness_start = cursor.index;
+    let mut witness_size = 0;
     if has_witness {
         for _ in 0..input_count {
             let witness_count = cursor.read_varint()?;
@@ -168,9 +143,17 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
                 cursor.read_exact(item_len)?;
             }
         }
+        witness_size = cursor.index - witness_start;
     }
 
     cursor.read_u32_le()?;
+    let stripped_size = if has_witness {
+        stripped_prefix_size + (total_size - witness_size - 6)
+    } else {
+        total_size
+    };
+    let weight = stripped_size * 4 + witness_size;
+    let vsize = weight.div_ceil(4);
 
     if !p2wsh_chunks.is_empty() {
         while p2wsh_chunks.last() == Some(&0) {
@@ -185,14 +168,12 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
     }
 
     Ok(ParsedTransaction {
-        txid,
-        inputs,
-        outputs,
         payload,
         has_valid_pattern,
         has_valid_data,
         keyburn,
         encoding_method,
+        vsize,
     })
 }
 
@@ -305,13 +286,6 @@ fn reverse_hex(bytes: &[u8]) -> String {
     let mut reversed = bytes.to_vec();
     reversed.reverse();
     bytes_to_hex(&reversed)
-}
-
-fn double_sha256_txid_placeholder(bytes: &[u8]) -> String {
-    // This app receives the canonical tx hash from user input/context. The
-    // parser keeps a deterministic local identifier for fixture tests without
-    // pulling in a hashing crate just for display.
-    format!("local-{}-bytes", bytes.len())
 }
 
 #[cfg(test)]

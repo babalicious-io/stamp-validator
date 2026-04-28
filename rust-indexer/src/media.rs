@@ -11,6 +11,8 @@ pub struct MediaResult {
     pub base64: Option<String>,
     pub is_valid_base64: bool,
     pub file_size_bytes: Option<usize>,
+    pub html_title: Option<String>,
+    pub html_author: Option<String>,
 }
 
 impl MediaResult {
@@ -23,6 +25,8 @@ impl MediaResult {
             base64: None,
             is_valid_base64: false,
             file_size_bytes: None,
+            html_title: None,
+            html_author: None,
         }
     }
 }
@@ -51,6 +55,8 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option
                 base64: None,
                 is_valid_base64: false,
                 file_size_bytes: Some(text.len()),
+                html_title: None,
+                html_author: None,
             },
             json,
             Some(text),
@@ -69,6 +75,11 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option
     } else {
         None
     };
+    let html_metadata = if kind == "html" {
+        extract_html_metadata(&text)
+    } else {
+        HtmlMetadata::empty()
+    };
 
     (
         MediaResult {
@@ -85,6 +96,8 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option
             base64: encoded_media,
             is_valid_base64: has_renderable_data_url,
             file_size_bytes: Some(payload.len()),
+            html_title: html_metadata.title,
+            html_author: html_metadata.author,
         },
         None,
         Some(text),
@@ -113,6 +126,16 @@ fn parse_data_url(description: &str) -> Option<MediaResult> {
         .unwrap_or("application/octet-stream")
         .to_string();
 
+    let html_metadata = if media_kind(&mimetype) == "html" {
+        base64_decode(body)
+            .ok()
+            .and_then(|bytes| String::from_utf8(bytes).ok())
+            .map(|html| extract_html_metadata(&html))
+            .unwrap_or_else(HtmlMetadata::empty)
+    } else {
+        HtmlMetadata::empty()
+    };
+
     Some(MediaResult {
         kind: media_kind(&mimetype),
         mimetype: Some(mimetype.clone()),
@@ -121,6 +144,8 @@ fn parse_data_url(description: &str) -> Option<MediaResult> {
         base64: Some(body.to_string()),
         is_valid_base64: true,
         file_size_bytes: decoded_base64_size(body),
+        html_title: html_metadata.title,
+        html_author: html_metadata.author,
     })
 }
 
@@ -143,7 +168,109 @@ fn parse_src_protocol_media(value: &Value) -> Option<MediaResult> {
         base64: None,
         is_valid_base64: false,
         file_size_bytes: Some(value.to_string().len()),
+        html_title: None,
+        html_author: None,
     })
+}
+
+struct HtmlMetadata {
+    title: Option<String>,
+    author: Option<String>,
+}
+
+impl HtmlMetadata {
+    fn empty() -> Self {
+        Self {
+            title: None,
+            author: None,
+        }
+    }
+}
+
+fn extract_html_metadata(html: &str) -> HtmlMetadata {
+    HtmlMetadata {
+        title: extract_between_case_insensitive(html, "<title", "</title>").and_then(|value| {
+            value
+                .split_once('>')
+                .map(|(_, title)| html_unescape(title.trim()))
+                .filter(|title| !title.is_empty())
+        }),
+        author: extract_meta_author(html),
+    }
+}
+
+fn extract_meta_author(html: &str) -> Option<String> {
+    let lower = html.to_ascii_lowercase();
+    let mut cursor = 0;
+
+    while let Some(relative_start) = lower[cursor..].find("<meta") {
+        let start = cursor + relative_start;
+        let end = lower[start..]
+            .find('>')
+            .map(|relative_end| start + relative_end)
+            .unwrap_or(html.len());
+        let tag = &html[start..end];
+        let tag_lower = &lower[start..end];
+
+        if tag_lower.contains("name=\"author\"")
+            || tag_lower.contains("name='author'")
+            || tag_lower.contains("name=author")
+        {
+            if let Some(author) = extract_attribute(tag, "content") {
+                return Some(author);
+            }
+        }
+
+        cursor = end.saturating_add(1);
+    }
+
+    None
+}
+
+fn extract_between_case_insensitive(
+    value: &str,
+    start_pattern: &str,
+    end_pattern: &str,
+) -> Option<String> {
+    let lower = value.to_ascii_lowercase();
+    let start = lower.find(start_pattern)?;
+    let content_start = start + start_pattern.len();
+    let end = lower[content_start..].find(end_pattern)? + content_start;
+    Some(value[start..end].to_string())
+}
+
+fn extract_attribute(tag: &str, attr_name: &str) -> Option<String> {
+    let lower = tag.to_ascii_lowercase();
+    let pattern = format!("{attr_name}=");
+    let start = lower.find(&pattern)? + pattern.len();
+    let mut chars = tag[start..].chars();
+    let quote = chars.next()?;
+
+    let raw_value = if quote == '"' || quote == '\'' {
+        let rest = &tag[start + quote.len_utf8()..];
+        rest.split(quote).next()?.trim()
+    } else {
+        tag[start..]
+            .split(|character: char| character.is_ascii_whitespace() || character == '>')
+            .next()?
+            .trim()
+    };
+
+    let value = html_unescape(raw_value);
+    if value.is_empty() {
+        None
+    } else {
+        Some(value)
+    }
+}
+
+fn html_unescape(value: &str) -> String {
+    value
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
 }
 
 fn sniff_mimetype(payload: &[u8]) -> String {
@@ -238,6 +365,53 @@ fn base64_encode(bytes: &[u8]) -> String {
     output
 }
 
+fn base64_decode(value: &str) -> Result<Vec<u8>, String> {
+    if !is_valid_base64(value) || value.len() % 4 != 0 {
+        return Err("Invalid base64 input.".to_string());
+    }
+
+    let mut output = Vec::with_capacity((value.len() / 4) * 3);
+    for chunk in value.as_bytes().chunks(4) {
+        let first = base64_value(chunk[0])?;
+        let second = base64_value(chunk[1])?;
+        let third = if chunk[2] == b'=' {
+            0
+        } else {
+            base64_value(chunk[2])?
+        };
+        let fourth = if chunk[3] == b'=' {
+            0
+        } else {
+            base64_value(chunk[3])?
+        };
+        let triple = ((first as u32) << 18)
+            | ((second as u32) << 12)
+            | ((third as u32) << 6)
+            | fourth as u32;
+
+        output.push(((triple >> 16) & 0xff) as u8);
+        if chunk[2] != b'=' {
+            output.push(((triple >> 8) & 0xff) as u8);
+        }
+        if chunk[3] != b'=' {
+            output.push((triple & 0xff) as u8);
+        }
+    }
+
+    Ok(output)
+}
+
+fn base64_value(byte: u8) -> Result<u8, String> {
+    match byte {
+        b'A'..=b'Z' => Ok(byte - b'A'),
+        b'a'..=b'z' => Ok(byte - b'a' + 26),
+        b'0'..=b'9' => Ok(byte - b'0' + 52),
+        b'+' => Ok(62),
+        b'/' => Ok(63),
+        _ => Err("Invalid base64 character.".to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,10 +433,12 @@ mod tests {
     #[test]
     fn renders_raw_html_payloads_as_iframe_media() {
         let (media, json, source_text) =
-            media_from_payload(b"<!DOCTYPE html><html><body>Stamp</body></html>");
+            media_from_payload(b"<!DOCTYPE html><html><head><title>Stamp Title</title><meta name=\"author\" content=\"Satoshi\"></head><body>Stamp</body></html>");
 
         assert_eq!(media.kind, "html");
         assert_eq!(media.mimetype.as_deref(), Some("text/html"));
+        assert_eq!(media.html_title.as_deref(), Some("Stamp Title"));
+        assert_eq!(media.html_author.as_deref(), Some("Satoshi"));
         assert!(media
             .data_url
             .as_deref()
@@ -272,5 +448,16 @@ mod tests {
         assert!(media.is_valid_base64);
         assert!(json.is_none());
         assert!(source_text.is_some());
+    }
+
+    #[test]
+    fn extracts_html_metadata_from_base64_data_url() {
+        let html = "<html><head><title>Encoded Stamp</title><meta content='Ada' name='author'></head></html>";
+        let encoded = base64_encode(html.as_bytes());
+        let media = parse_data_url(&format!("data:text/html;base64,{encoded}")).unwrap();
+
+        assert_eq!(media.kind, "html");
+        assert_eq!(media.html_title.as_deref(), Some("Encoded Stamp"));
+        assert_eq!(media.html_author.as_deref(), Some("Ada"));
     }
 }

@@ -60,7 +60,7 @@ impl StampResult {
 pub fn index_stamp_from_input(input: &LookupInput) -> Result<String, String> {
     validate_tx_hash(&input.tx_hash)?;
     let parsed = parse_transaction(&input.raw_tx_hex)?;
-    let (media, src_protocol, src_data) = parsed
+    let (media, src_protocol, _) = parsed
         .payload
         .as_deref()
         .map(media_from_payload)
@@ -72,15 +72,14 @@ pub fn index_stamp_from_input(input: &LookupInput) -> Result<String, String> {
         &media,
         parsed.payload.as_deref(),
         src_protocol.as_ref(),
-        src_data.as_deref(),
     );
     let message = if parsed.has_valid_data {
-        "Stamp payload processed locally in Rust/Wasm.".to_string()
+        "Transaction hash has been processed and a Bitcoin Stamp was found.".to_string()
     } else if parsed.has_valid_pattern {
-        "Stamp-like transaction pattern found, but no valid stamp payload was extracted."
+        "Stamp-like transaction pattern found, but no valid Bitcoin Stamp metadata was extracted."
             .to_string()
     } else {
-        "No Bitcoin Stamps payload was found in this transaction.".to_string()
+        "Transaction hash does not contain a valid Bitcoin Stamp.".to_string()
     };
 
     Ok(StampResult {
@@ -113,21 +112,16 @@ fn build_metadata(
     media: &MediaResult,
     payload: Option<&[u8]>,
     src_protocol: Option<&Value>,
-    src_data: Option<&str>,
 ) -> Vec<MetadataField> {
     let mut fields = Vec::new();
     let block_index = value_from_path(&input.context, &["status", "block_height"]);
     let block_time = value_from_path(&input.context, &["status", "block_time"]);
+    let fee_sats = value_from_path(&input.context, &["localTxStats", "fee_sats"]);
+    let provider_vsize = value_from_path(&input.context, &["localTxStats", "vsize"]);
+    let confirmations = confirmations_from_context(&input.context);
     let stamp_hash = stamp_hash_from_context(&input.tx_hash, &block_index);
     let file_hash = payload.map(md5_hex).map(Value::from).unwrap_or(Value::Null);
 
-    push(
-        &mut fields,
-        "stamp",
-        "Stamp",
-        Value::Null,
-        "chain database required",
-    );
     push(
         &mut fields,
         "block_index",
@@ -137,38 +131,31 @@ fn build_metadata(
     );
     push(
         &mut fields,
-        "cpid",
-        "CPID",
-        cpid_from_protocol(src_protocol),
+        "tick",
+        "Token Ticker",
+        tick_from_protocol(src_protocol),
         "payload or chain database",
     );
     push(
         &mut fields,
-        "asset_longname",
-        "Asset Longname",
-        string_from_protocol(src_protocol, "asset_longname"),
+        "src20_operation",
+        "Transaction Type",
+        src20_operation_from_protocol(src_protocol),
         "payload",
     );
     push(
         &mut fields,
         "creator",
-        "Creator",
+        creator_label_from_protocol(src_protocol),
         creator_from_context(&input.context),
         "provider context",
     );
     push(
         &mut fields,
-        "creator_name",
-        "Creator Name",
-        Value::Null,
-        "chain database required",
-    );
-    push(
-        &mut fields,
-        "divisible",
-        "Divisible",
-        bool_from_protocol(src_protocol, "divisible"),
-        "payload",
+        "receiver",
+        "Receiver Addy",
+        receiver_from_context(src_protocol, &input.context),
+        "provider context",
     );
     push(
         &mut fields,
@@ -179,24 +166,22 @@ fn build_metadata(
     );
     push(
         &mut fields,
-        "locked",
-        "Locked",
-        Value::Null,
-        "chain database required",
-    );
-    push(
-        &mut fields,
-        "supply",
-        "Supply",
-        value_from_protocol(src_protocol, "quantity"),
-        "payload",
-    );
-    push(
-        &mut fields,
         "block_time",
         "Block Time",
         block_time,
         "provider context",
+    );
+    push(&mut fields, "fee_sats", "Fee", fee_sats, "provider context");
+    push(
+        &mut fields,
+        "vsize",
+        "Virtual Size",
+        if provider_vsize.is_null() {
+            Value::from(parsed.vsize)
+        } else {
+            provider_vsize
+        },
+        "transaction parser or provider context",
     );
     push(
         &mut fields,
@@ -207,10 +192,10 @@ fn build_metadata(
     );
     push(
         &mut fields,
-        "tx_index",
-        "Transaction Index",
-        Value::Null,
-        "chain database required",
+        "confirmations",
+        "Confirmations",
+        confirmations,
+        "provider context",
     );
     push(
         &mut fields,
@@ -229,16 +214,23 @@ fn build_metadata(
     push(
         &mut fields,
         "stamp_mimetype",
-        "Stamp MIME Type",
+        "File Type",
         opt_string(media.mimetype.clone()),
         "payload",
     );
     push(
         &mut fields,
-        "stamp_url",
-        "Stamp URL",
-        opt_string(media.data_url.clone()),
-        "local embedded payload data URL",
+        "html_title",
+        "Title",
+        opt_string(media.html_title.clone()),
+        "payload HTML",
+    );
+    push(
+        &mut fields,
+        "html_author",
+        "Artist",
+        opt_string(media.html_author.clone()),
+        "payload HTML",
     );
     push(
         &mut fields,
@@ -250,7 +242,7 @@ fn build_metadata(
     push(
         &mut fields,
         "file_size_bytes",
-        "File Size Bytes",
+        "File Size",
         media
             .file_size_bytes
             .map(Value::from)
@@ -267,76 +259,23 @@ fn build_metadata(
     push(
         &mut fields,
         "is_btc_stamp",
-        "Is BTC Stamp",
+        "Valid Bitcoin Stamp",
         Value::from(parsed.has_valid_data),
         "transaction parser",
     );
     push(
         &mut fields,
-        "is_cursed",
-        "Is Cursed",
-        Value::Null,
-        "chain database required",
-    );
-    push(
-        &mut fields,
         "is_valid_base64",
-        "Is Valid Base64",
+        "Valid Base64 code",
         Value::from(media.is_valid_base64),
         "payload",
     );
     push(
         &mut fields,
-        "is_posh",
-        "Is POSH",
-        Value::Null,
-        "chain database required",
-    );
-    push(
-        &mut fields,
         "stamp_base64",
-        "Stamp Base64",
+        "Base64 Image",
         opt_string(media.base64.clone()),
         "payload",
-    );
-    push(
-        &mut fields,
-        "src_data",
-        "SRC Data",
-        src_data.map(Value::from).unwrap_or(Value::Null),
-        "payload",
-    );
-    push(
-        &mut fields,
-        "local_txid",
-        "Local Parser Transaction ID",
-        Value::from(parsed.txid.clone()),
-        "transaction parser",
-    );
-    push(
-        &mut fields,
-        "input_count",
-        "Input Count",
-        Value::from(parsed.inputs.len()),
-        "transaction parser",
-    );
-    push(
-        &mut fields,
-        "output_count",
-        "Output Count",
-        Value::from(parsed.outputs.len()),
-        "transaction parser",
-    );
-    push(
-        &mut fields,
-        "first_prev_txid",
-        "First Previous TXID",
-        parsed
-            .inputs
-            .first()
-            .map(|input| Value::from(input.prev_txid.clone()))
-            .unwrap_or(Value::Null),
-        "transaction parser",
     );
 
     fields
@@ -362,33 +301,52 @@ fn value_from_path(value: &Value, path: &[&str]) -> Value {
     current.clone()
 }
 
-fn value_from_protocol(src_protocol: Option<&Value>, key: &str) -> Value {
+fn confirmations_from_context(context: &Value) -> Value {
+    if let Some(confirmations) = [
+        &["status", "confirmations"][..],
+        &["localTxStats", "confirmations"][..],
+        &["confirmations"][..],
+    ]
+    .iter()
+    .find_map(|path| {
+        let value = value_from_path(context, path);
+        if value.is_null() {
+            None
+        } else {
+            Some(value)
+        }
+    }) {
+        return confirmations;
+    }
+
+    let block_height = value_from_path(context, &["status", "block_height"]);
+    let chain_tip_height = value_from_path(context, &["localTxStats", "chain_tip_height"]);
+
+    match (value_to_u64(&block_height), value_to_u64(&chain_tip_height)) {
+        (Some(block_height), Some(chain_tip_height)) if chain_tip_height >= block_height => {
+            Value::from(chain_tip_height - block_height + 1)
+        }
+        _ => Value::Null,
+    }
+}
+
+fn value_to_u64(value: &Value) -> Option<u64> {
+    value
+        .as_u64()
+        .or_else(|| value.as_i64().and_then(|number| u64::try_from(number).ok()))
+        .or_else(|| value.as_str().and_then(|text| text.parse::<u64>().ok()))
+}
+
+fn tick_from_protocol(src_protocol: Option<&Value>) -> Value {
     src_protocol
-        .and_then(|value| value.get(key))
+        .and_then(|value| value.get("tick"))
         .cloned()
         .unwrap_or(Value::Null)
 }
 
-fn string_from_protocol(src_protocol: Option<&Value>, key: &str) -> Value {
-    src_protocol
-        .and_then(|value| value.get(key))
-        .and_then(Value::as_str)
+fn src20_operation_from_protocol(src_protocol: Option<&Value>) -> Value {
+    src20_operation(src_protocol)
         .map(Value::from)
-        .unwrap_or(Value::Null)
-}
-
-fn bool_from_protocol(src_protocol: Option<&Value>, key: &str) -> Value {
-    src_protocol
-        .and_then(|value| value.get(key))
-        .and_then(Value::as_bool)
-        .map(Value::from)
-        .unwrap_or(Value::Null)
-}
-
-fn cpid_from_protocol(src_protocol: Option<&Value>) -> Value {
-    src_protocol
-        .and_then(|value| value.get("cpid").or_else(|| value.get("tick")))
-        .cloned()
         .unwrap_or(Value::Null)
 }
 
@@ -401,6 +359,86 @@ fn creator_from_context(context: &Value) -> Value {
         .and_then(|prevout| prevout.get("scriptpubkey_address"))
         .cloned()
         .unwrap_or(Value::Null)
+}
+
+fn receiver_from_context(src_protocol: Option<&Value>, context: &Value) -> Value {
+    if !is_src20_transfer(src_protocol) {
+        return Value::Null;
+    }
+
+    let sender = creator_from_context(context)
+        .as_str()
+        .map(str::to_ascii_lowercase)
+        .unwrap_or_default();
+
+    context
+        .get("vout")
+        .and_then(Value::as_array)
+        .and_then(|outputs| {
+            outputs.iter().find_map(|output| {
+                let address = output_address(output)?;
+                if !sender.is_empty() && address.eq_ignore_ascii_case(&sender) {
+                    return None;
+                }
+                Some(Value::from(address.to_string()))
+            })
+        })
+        .unwrap_or(Value::Null)
+}
+
+fn creator_label_from_protocol(src_protocol: Option<&Value>) -> &'static str {
+    if !is_src20_protocol(src_protocol) {
+        return "Artist Addy";
+    }
+
+    match src20_operation(src_protocol) {
+        Some(operation) if operation.eq_ignore_ascii_case("transfer") => "Sender Addy",
+        Some(operation) if operation.eq_ignore_ascii_case("deploy") => "Creator Addy",
+        Some(operation) if operation.eq_ignore_ascii_case("mint") => "Mint Addy",
+        _ => "Artist Addy",
+    }
+}
+
+fn is_src20_transfer(src_protocol: Option<&Value>) -> bool {
+    is_src20_protocol(src_protocol)
+        && src20_operation(src_protocol)
+            .is_some_and(|operation| operation.eq_ignore_ascii_case("transfer"))
+}
+
+fn is_src20_protocol(src_protocol: Option<&Value>) -> bool {
+    src_protocol
+        .and_then(|value| value.get("p").or_else(|| value.get("P")))
+        .and_then(Value::as_str)
+        .is_some_and(|protocol| protocol.eq_ignore_ascii_case("SRC-20"))
+}
+
+fn src20_operation(src_protocol: Option<&Value>) -> Option<&str> {
+    src_protocol
+        .and_then(|value| value.get("op").or_else(|| value.get("OP")))
+        .and_then(Value::as_str)
+}
+
+fn output_address(output: &Value) -> Option<&str> {
+    output
+        .get("scriptpubkey_address")
+        .or_else(|| output.get("address"))
+        .or_else(|| output.get("addr"))
+        .and_then(Value::as_str)
+        .or_else(|| {
+            output
+                .get("addresses")
+                .and_then(Value::as_array)
+                .and_then(|addresses| addresses.first())
+                .and_then(Value::as_str)
+        })
+        .or_else(|| {
+            output
+                .get("scriptPubKey")
+                .and_then(|script| script.get("addresses"))
+                .and_then(Value::as_array)
+                .and_then(|addresses| addresses.first())
+                .and_then(Value::as_str)
+        })
 }
 
 fn ident_from_media_or_protocol(media: &MediaResult, src_protocol: Option<&Value>) -> Value {
