@@ -144,10 +144,11 @@ select {
 /* ===== Pill container ===== */
 .container-pill {
   width: fit-content;
+  margin: 0;
   padding: var(--size-xs) var(--size-sm);
   border-radius: var(--border-radius-0);
   color: var(--color-neutral-1000);
-  background-color: var(--color-primary-600);
+  background-color: var(--color-primary-500);
   font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.05rem;
@@ -278,14 +279,6 @@ dd {
   font-weight: 700;
 }
 
-/* ===== Helper text ===== */
-.field-error,
-.empty-state {
-  color: var(--color-status-green);
-  font-size: var(--size-md);
-}
-
-
 
 
 /* ===================================================================
@@ -327,6 +320,7 @@ input[aria-invalid="true"] {
 .field-error {
   min-height: 1.4em;
   color: var(--color-status-red);
+  font-size: var(--size-md);
   font-weight: 700;
 }
 
