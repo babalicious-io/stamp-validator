@@ -1,21 +1,51 @@
+//! MIME sniffing, base64 encoding/decoding, data URL parsing, and HTML
+//! metadata extraction for Bitcoin Stamp payloads.
+//!
+//! Given raw payload bytes extracted from a transaction, this module determines
+//! what kind of media they represent and produces a [`MediaResult`] the browser
+//! can consume directly — including a `data:` URL for images and HTML, or plain
+//! text for JSON and text stamps.
+//!
+//! All base64 encoding and decoding is implemented without external crates to
+//! keep the Wasm binary small and avoid unnecessary dependencies.
+
 use serde::Serialize;
 use serde_json::Value;
 
+// ===================================================================
+//   PUBLIC TYPES
+// ===================================================================
+
+/// Describes the media content extracted from a stamp payload.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaResult {
+    /// Broad media category: `"image"`, `"html"`, `"json"`, `"text"`,
+    /// `"binary"`, or `"none"` when no payload was found.
     pub kind: String,
+    /// MIME type string (e.g. `"image/png"`, `"text/html"`).
     pub mimetype: Option<String>,
+    /// RFC 2397 data URL (`data:<mime>;base64,<data>`) ready for `<img src>`
+    /// or `<iframe src>`. Only present for image and HTML payloads.
     pub data_url: Option<String>,
+    /// Decoded text content. Present for JSON, plain-text, and non-renderable
+    /// payloads. Absent when a `data_url` is provided.
     pub text: Option<String>,
+    /// Raw base64 string without the data URL prefix. Present when the
+    /// original payload is or was re-encoded as base64.
     pub base64: Option<String>,
+    /// `true` when `base64` holds valid, browser-renderable base64 content.
     pub is_valid_base64: bool,
+    /// Size of the decoded payload in bytes.
     pub file_size_bytes: Option<usize>,
+    /// Contents of `<title>` if the payload is HTML.
     pub html_title: Option<String>,
+    /// Contents of `<meta name="author">` if the payload is HTML.
     pub html_author: Option<String>,
 }
 
 impl MediaResult {
+    /// Returns an empty result representing the absence of a payload.
     pub fn empty() -> Self {
         Self {
             kind: "none".to_string(),
@@ -31,19 +61,28 @@ impl MediaResult {
     }
 }
 
-pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option<String>) {
+// ===================================================================
+//   ENTRY POINT
+// ===================================================================
+
+/// Inspects `payload` bytes and returns a [`MediaResult`] describing the
+/// content, plus an optional parsed JSON value representing a recognised SRC
+/// protocol object (SRC-20, SRC-721, SRC-101).
+pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>) {
     let text = String::from_utf8_lossy(payload).trim().to_string();
     let json = serde_json::from_str::<Value>(&text).ok();
 
+    // JSON branch: check for embedded data URL or a known SRC protocol first,
+    // then fall back to a generic JSON result.
     if let Some(value) = json.as_ref() {
         if let Some(description) = value.get("description").and_then(Value::as_str) {
             if let Some(media) = parse_data_url(description) {
-                return (media, json, Some(text));
+                return (media, json);
             }
         }
 
         if let Some(media) = parse_src_protocol_media(value) {
-            return (media, json, Some(text));
+            return (media, json);
         }
 
         return (
@@ -59,14 +98,16 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option
                 html_author: None,
             },
             json,
-            Some(text),
         );
     }
 
+    // Plain-text branch: the payload might be a bare data URL string.
     if let Some(media) = parse_data_url(&text) {
-        return (media, None, Some(text));
+        return (media, None);
     }
 
+    // Binary branch: sniff MIME type from magic bytes and base64-encode images
+    // and HTML for browser rendering.
     let mimetype = sniff_mimetype(payload);
     let kind = media_kind(&mimetype);
     let has_renderable_data_url = matches!(kind.as_str(), "image" | "html");
@@ -80,18 +121,20 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option
     } else {
         HtmlMetadata::empty()
     };
+    // Build the data URL before moving `mimetype` into the struct.
+    let data_url = encoded_media
+        .as_ref()
+        .map(|base64| format!("data:{mimetype};base64,{base64}"));
 
     (
         MediaResult {
             kind,
             mimetype: Some(mimetype),
-            data_url: encoded_media
-                .as_ref()
-                .map(|base64| format!("data:{};base64,{}", sniff_mimetype(payload), base64)),
+            data_url,
             text: if has_renderable_data_url {
                 None
             } else {
-                Some(text.clone())
+                Some(text)
             },
             base64: encoded_media,
             is_valid_base64: has_renderable_data_url,
@@ -100,10 +143,16 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>, Option
             html_author: html_metadata.author,
         },
         None,
-        Some(text),
     )
 }
 
+// ===================================================================
+//   DATA URL PARSING
+// ===================================================================
+
+/// Parses an RFC 2397 data URL string and returns a [`MediaResult`] if it
+/// contains a valid `base64` payload. Handles URLs embedded inside JSON string
+/// values (strips surrounding quotes, parentheses, and angle brackets).
 fn parse_data_url(description: &str) -> Option<MediaResult> {
     let data_start = description.find("data:")?;
     let data = &description[data_start..];
@@ -149,6 +198,13 @@ fn parse_data_url(description: &str) -> Option<MediaResult> {
     })
 }
 
+// ===================================================================
+//   SRC PROTOCOL PARSING
+// ===================================================================
+
+/// Returns a JSON [`MediaResult`] for stamps whose payload is a recognised SRC
+/// protocol object: SRC-20 (fungible tokens), SRC-721 (recursive NFTs), or
+/// SRC-101 (identity). The protocol field is matched case-insensitively.
 fn parse_src_protocol_media(value: &Value) -> Option<MediaResult> {
     let protocol = value
         .get("p")
@@ -160,19 +216,25 @@ fn parse_src_protocol_media(value: &Value) -> Option<MediaResult> {
         return None;
     }
 
+    let text = value.to_string();
     Some(MediaResult {
         kind: "json".to_string(),
         mimetype: Some("application/json".to_string()),
         data_url: None,
-        text: Some(value.to_string()),
+        file_size_bytes: Some(text.len()),
+        text: Some(text),
         base64: None,
         is_valid_base64: false,
-        file_size_bytes: Some(value.to_string().len()),
         html_title: None,
         html_author: None,
     })
 }
 
+// ===================================================================
+//   HTML PARSING
+// ===================================================================
+
+/// Title and author metadata extracted from an HTML document.
 struct HtmlMetadata {
     title: Option<String>,
     author: Option<String>,
@@ -187,6 +249,8 @@ impl HtmlMetadata {
     }
 }
 
+/// Extracts `<title>` text and `<meta name="author">` content from an HTML
+/// string using lightweight string scanning (no DOM parser).
 fn extract_html_metadata(html: &str) -> HtmlMetadata {
     HtmlMetadata {
         title: extract_between_case_insensitive(html, "<title", "</title>").and_then(|value| {
@@ -199,6 +263,8 @@ fn extract_html_metadata(html: &str) -> HtmlMetadata {
     }
 }
 
+/// Scans `html` for `<meta name="author">` tags and returns the `content`
+/// attribute value of the first match found.
 fn extract_meta_author(html: &str) -> Option<String> {
     let lower = html.to_ascii_lowercase();
     let mut cursor = 0;
@@ -227,6 +293,9 @@ fn extract_meta_author(html: &str) -> Option<String> {
     None
 }
 
+/// Returns the substring of `value` that lies between the first occurrence of
+/// `start_pattern` and the following `end_pattern`, matching both
+/// case-insensitively.
 fn extract_between_case_insensitive(
     value: &str,
     start_pattern: &str,
@@ -239,6 +308,8 @@ fn extract_between_case_insensitive(
     Some(value[start..end].to_string())
 }
 
+/// Reads the value of `attr_name` from a single HTML tag string. Handles
+/// double-quoted, single-quoted, and unquoted attribute values.
 fn extract_attribute(tag: &str, attr_name: &str) -> Option<String> {
     let lower = tag.to_ascii_lowercase();
     let pattern = format!("{attr_name}=");
@@ -264,6 +335,7 @@ fn extract_attribute(tag: &str, attr_name: &str) -> Option<String> {
     }
 }
 
+/// Unescapes common HTML entities (`&amp;`, `&lt;`, `&gt;`, `&quot;`, `&#39;`).
 fn html_unescape(value: &str) -> String {
     value
         .replace("&amp;", "&")
@@ -273,6 +345,13 @@ fn html_unescape(value: &str) -> String {
         .replace("&#39;", "'")
 }
 
+// ===================================================================
+//   MIME SNIFFING
+// ===================================================================
+
+/// Detects the MIME type of `payload` from its leading magic bytes or text
+/// structure. Falls back to `"application/octet-stream"` for unrecognised
+/// binary data.
 fn sniff_mimetype(payload: &[u8]) -> String {
     if payload.starts_with(b"\x89PNG\r\n\x1a\n") {
         "image/png".to_string()
@@ -293,6 +372,8 @@ fn sniff_mimetype(payload: &[u8]) -> String {
     }
 }
 
+/// Returns `true` when the payload begins with a well-known HTML document
+/// opening tag (case-insensitive).
 fn looks_like_html(payload: &[u8]) -> bool {
     let text = String::from_utf8_lossy(payload);
     let trimmed = text.trim_start().to_ascii_lowercase();
@@ -303,6 +384,7 @@ fn looks_like_html(payload: &[u8]) -> bool {
         || trimmed.starts_with("<body")
 }
 
+/// Maps a MIME type string to a broad media kind category.
 fn media_kind(mimetype: &str) -> String {
     if mimetype.starts_with("image/") {
         "image".to_string()
@@ -317,26 +399,11 @@ fn media_kind(mimetype: &str) -> String {
     }
 }
 
-fn is_valid_base64(value: &str) -> bool {
-    value
-        .bytes()
-        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'='))
-}
+// ===================================================================
+//   BASE64
+// ===================================================================
 
-fn decoded_base64_size(value: &str) -> Option<usize> {
-    if !is_valid_base64(value) {
-        return None;
-    }
-
-    let padding = value
-        .as_bytes()
-        .iter()
-        .rev()
-        .take_while(|byte| **byte == b'=')
-        .count();
-    Some((value.len() / 4) * 3 - padding)
-}
-
+/// Encodes `bytes` as a standard base64 string (RFC 4648, with `+` and `/`).
 fn base64_encode(bytes: &[u8]) -> String {
     const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut output = String::with_capacity(bytes.len().div_ceil(3) * 4);
@@ -365,6 +432,8 @@ fn base64_encode(bytes: &[u8]) -> String {
     output
 }
 
+/// Decodes a standard base64 string into bytes. Requires the input to be
+/// padded to a multiple of 4 characters. Returns an error for invalid input.
 fn base64_decode(value: &str) -> Result<Vec<u8>, String> {
     if !is_valid_base64(value) || value.len() % 4 != 0 {
         return Err("Invalid base64 input.".to_string());
@@ -412,6 +481,34 @@ fn base64_value(byte: u8) -> Result<u8, String> {
     }
 }
 
+/// Returns `true` when every byte in `value` is a valid standard base64
+/// character (`A–Z`, `a–z`, `0–9`, `+`, `/`, `=`).
+fn is_valid_base64(value: &str) -> bool {
+    value
+        .bytes()
+        .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'/' | b'='))
+}
+
+/// Calculates the decoded byte length of a valid base64 string without actually
+/// decoding it, using the standard formula: `(len / 4) * 3 − padding`.
+fn decoded_base64_size(value: &str) -> Option<usize> {
+    if !is_valid_base64(value) {
+        return None;
+    }
+
+    let padding = value
+        .as_bytes()
+        .iter()
+        .rev()
+        .take_while(|byte| **byte == b'=')
+        .count();
+    Some((value.len() / 4) * 3 - padding)
+}
+
+// ===================================================================
+//   TESTS
+// ===================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -432,8 +529,10 @@ mod tests {
 
     #[test]
     fn renders_raw_html_payloads_as_iframe_media() {
-        let (media, json, source_text) =
-            media_from_payload(b"<!DOCTYPE html><html><head><title>Stamp Title</title><meta name=\"author\" content=\"Satoshi\"></head><body>Stamp</body></html>");
+        let (media, json) = media_from_payload(
+            b"<!DOCTYPE html><html><head><title>Stamp Title</title>\
+              <meta name=\"author\" content=\"Satoshi\"></head><body>Stamp</body></html>",
+        );
 
         assert_eq!(media.kind, "html");
         assert_eq!(media.mimetype.as_deref(), Some("text/html"));
@@ -447,12 +546,12 @@ mod tests {
         assert!(media.text.is_none());
         assert!(media.is_valid_base64);
         assert!(json.is_none());
-        assert!(source_text.is_some());
     }
 
     #[test]
     fn extracts_html_metadata_from_base64_data_url() {
-        let html = "<html><head><title>Encoded Stamp</title><meta content='Ada' name='author'></head></html>";
+        let html =
+            "<html><head><title>Encoded Stamp</title><meta content='Ada' name='author'></head></html>";
         let encoded = base64_encode(html.as_bytes());
         let media = parse_data_url(&format!("data:text/html;base64,{encoded}")).unwrap();
 

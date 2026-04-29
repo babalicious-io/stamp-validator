@@ -1,9 +1,27 @@
+//! ARC4 (RC4) stream cipher used to decrypt MULTISIG-encoded stamp payloads.
+//!
+//! Bitcoin Stamps encoded via the MULTISIG method embed encrypted data inside
+//! fake public keys in an `OP_CHECKMULTISIG` output script. The decryption
+//! key is derived from the previous transaction's ID bytes, following the
+//! btc_stamps indexer convention.
+
+// ===================================================================
+//   PUBLIC API
+// ===================================================================
+
+/// Decrypts `data` using the RC4 stream cipher keyed on `seed`.
 pub fn decrypt(data: &[u8], seed: &[u8]) -> Vec<u8> {
-    let mut state = init(seed);
-    apply(data, &mut state)
+    let mut state = key_schedule(seed);
+    stream_cipher(data, &mut state)
 }
 
-fn init(seed: &[u8]) -> [u8; 256] {
+// ===================================================================
+//   KEY SCHEDULE (KSA)
+// ===================================================================
+
+/// Initialises the RC4 256-byte permutation from `seed` (Key Scheduling
+/// Algorithm). Returns the identity permutation when `seed` is empty.
+fn key_schedule(seed: &[u8]) -> [u8; 256] {
     let mut state = [0_u8; 256];
     for (index, item) in state.iter_mut().enumerate() {
         *item = index as u8;
@@ -22,7 +40,14 @@ fn init(seed: &[u8]) -> [u8; 256] {
     state
 }
 
-fn apply(data: &[u8], state: &mut [u8; 256]) -> Vec<u8> {
+// ===================================================================
+//   STREAM CIPHER (PRGA)
+// ===================================================================
+
+/// Generates the RC4 keystream and XORs it byte-by-byte with `data`
+/// (Pseudo-Random Generation Algorithm). Encryption and decryption are the
+/// same operation.
+fn stream_cipher(data: &[u8], state: &mut [u8; 256]) -> Vec<u8> {
     let mut i = 0_usize;
     let mut j = 0_usize;
     let mut output = Vec::with_capacity(data.len());
@@ -37,6 +62,10 @@ fn apply(data: &[u8], state: &mut [u8; 256]) -> Vec<u8> {
 
     output
 }
+
+// ===================================================================
+//   TESTS
+// ===================================================================
 
 #[cfg(test)]
 mod tests {
