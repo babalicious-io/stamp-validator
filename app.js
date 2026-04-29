@@ -1,7 +1,11 @@
+/* ===================================================================
+   CONSTANTS & PROVIDERS
+   =================================================================== */
 const TX_HASH_PATTERN = /^[0-9a-f]{64}$/;
+
 const PROVIDERS = {
   mempool: {
-    label: "mempool.space",
+    label: "Mempool",
     baseUrl: "https://mempool.space/api",
     adapter: "esplora",
   },
@@ -11,7 +15,7 @@ const PROVIDERS = {
     adapter: "esplora",
   },
   blockchain: {
-    label: "Blockchain.com",
+    label: "Blockchain",
     baseUrl: "https://blockchain.info",
     adapter: "blockchain",
   },
@@ -27,24 +31,13 @@ const PROVIDERS = {
   },
 };
 
-const form = document.querySelector("#stamp-search-form");
-const providerSelect = document.querySelector("#node-provider");
-const txHashInput = document.querySelector("#tx-hash");
-const txHashError = document.querySelector("#tx-hash-error");
-const resultCard = document.querySelector("#stamp-result-card");
-const mediaPreview = document.querySelector("#media-preview");
-const mediaFrame = document.querySelector("#media-frame");
-const stampBase64Panel = document.querySelector("#stamp-base64-panel");
-const stampBase64List = document.querySelector("#stamp-base64-list");
-const stampDataPanel = document.querySelector("#stamp-data-panel");
-const stampDataList = document.querySelector("#stamp-data-list");
-const bitcoinDataList = document.querySelector("#bitcoin-data-list");
-const metadataPanels = document.querySelector(".metadata-panels");
-const emptyState = document.querySelector("#empty-state");
-const submitButton = form.querySelector("button[type='submit']");
+/* ===================================================================
+   METADATA KEY LISTS
+   =================================================================== */
 const HTML_STAMP_DATA_KEYS = ["html_title", "html_author"];
 const BLOCK_DETAIL_TOP_KEYS = ["tx_hash"];
 const STAMP_MEDIA_DATA_KEYS = ["stamp_mimetype", "file_size_bytes"];
+
 const STAMP_DATA_KEYS = [
   "creator",
   ...STAMP_MEDIA_DATA_KEYS,
@@ -52,6 +45,7 @@ const STAMP_DATA_KEYS = [
   "stamp_hash",
   "is_btc_stamp",
 ];
+
 const SRC20_STAMP_DATA_KEYS = [
   "tick",
   "src20_operation",
@@ -64,12 +58,37 @@ const SRC20_STAMP_DATA_KEYS = [
   "is_btc_stamp",
 ];
 
+/* ===================================================================
+   DOM REFERENCES
+   =================================================================== */
+// Note: #transaction-flow* elements are queried and owned by tx-flow-chart.js.
+// app.js resets the chart panel via resetTransactionFlow() — see tx-flow-chart.js.
+const form = document.querySelector("#stamp-search-form");
+const providerSelect = document.querySelector("#node-provider");
+const txHashInput = document.querySelector("#tx-hash");
+const resultCard = document.querySelector("#stamp-result-card");
+const mediaPreview = document.querySelector("#media-preview");
+const mediaFrame = document.querySelector("#media-frame");
+const stampBase64Panel = document.querySelector("#stamp-base64-panel");
+const stampBase64List = document.querySelector("#stamp-base64-list");
+const stampDataPanel = document.querySelector("#stamp-data-panel");
+const stampDataList = document.querySelector("#stamp-data-list");
+const bitcoinDataList = document.querySelector("#bitcoin-data-list");
+const emptyState = document.querySelector("#empty-state");
+const submitButton = form.querySelector("button[type='submit']");
+
+/* ===================================================================
+   MUTABLE STATE
+   =================================================================== */
 let wasmIndexer = null;
 let activeRequestId = 0;
 let activeController = null;
 let statusMessage = null;
 let statusMessageTimeout = null;
 
+/* ===================================================================
+   VALIDATION
+   =================================================================== */
 function normalizeTxHash(value) {
   return value.trim().toLowerCase();
 }
@@ -108,10 +127,14 @@ function validateTxHash(value) {
   };
 }
 
+/* ===================================================================
+   STATUS TOAST
+   =================================================================== */
 function getStatusMessage() {
   if (!statusMessage) {
-    statusMessage = document.createElement("output");
+    statusMessage = document.createElement("div");
     statusMessage.className = "message";
+    statusMessage.setAttribute("aria-atomic", "true");
     document.body.append(statusMessage);
   }
 
@@ -139,6 +162,8 @@ function setStatus(message, type = "", autoDismiss = type !== "loading") {
   statusElement.getAnimations().forEach((animation) => animation.cancel());
 
   statusElement.textContent = message;
+  statusElement.setAttribute("role", type === "error" ? "alert" : "status");
+  statusElement.setAttribute("aria-live", type === "error" ? "assertive" : "polite");
   statusElement.classList.remove("success", "error", "loading");
 
   if (type) {
@@ -189,12 +214,20 @@ function setStatus(message, type = "", autoDismiss = type !== "loading") {
         statusMessageTimeout = null;
       })
       .catch(() => {});
-  }, 5000);
+  }, 3000);
 }
 
-function setFieldError(message) {
-  txHashError.textContent = message;
+/* ===================================================================
+   UI STATE
+   =================================================================== */
+function setFieldValidity(message) {
   txHashInput.setAttribute("aria-invalid", message ? "true" : "false");
+}
+
+function setLoading(isLoading) {
+  submitButton.disabled = isLoading;
+  providerSelect.disabled = isLoading;
+  txHashInput.disabled = isLoading;
 }
 
 function showEmptyState() {
@@ -202,12 +235,7 @@ function showEmptyState() {
   emptyState.hidden = false;
   mediaFrame.replaceChildren();
   mediaPreview.hidden = true;
-  transactionFlowChart.replaceChildren();
-  transactionFlowSummary.textContent = "";
-  transactionFlowInputCount.textContent = "0";
-  transactionFlowOutputCount.textContent = "0";
-  transactionFlow.open = true;
-  transactionFlow.hidden = true;
+  resetTransactionFlow();
   stampBase64Panel.open = false;
   stampBase64Panel.hidden = true;
   stampBase64List.replaceChildren();
@@ -230,6 +258,9 @@ function showResult(result, context, txHash) {
   emptyState.hidden = true;
 }
 
+/* ===================================================================
+   WASM/RUST INDEXER
+   =================================================================== */
 async function loadWasmIndexer() {
   try {
     const response = await fetch("./app.wasm");
@@ -252,6 +283,9 @@ async function loadWasmIndexer() {
         const packed = exports.index_stamp(inputPtr, encoded.length);
         exports.dealloc(inputPtr, encoded.length);
 
+        // index_stamp returns a packed i64: high 32 bits = output pointer,
+        // low 32 bits = output byte length. BigInt arithmetic handles the
+        // full 64-bit range safely across all JS engines.
         const packedBigInt = typeof packed === "bigint" ? packed : BigInt(packed);
         const outputPtr = Number(packedBigInt >> 32n);
         const outputLen = Number(packedBigInt & 0xffffffffn);
@@ -266,6 +300,9 @@ async function loadWasmIndexer() {
   }
 }
 
+/* ===================================================================
+   NETWORK — FETCH DISPATCH
+   =================================================================== */
 async function fetchTransactionData(providerKey, txHash, signal) {
   const provider = PROVIDERS[providerKey] || PROVIDERS.mempool;
 
@@ -284,6 +321,9 @@ async function fetchTransactionData(providerKey, txHash, signal) {
   return fetchEsploraTransactionData(provider, txHash, signal);
 }
 
+/* ===================================================================
+   NETWORK — PROVIDER ADAPTERS
+   =================================================================== */
 async function fetchEsploraTransactionData(provider, txHash, signal) {
   const txUrl = `${provider.baseUrl}/tx/${txHash}`;
   const hexUrl = `${txUrl}/hex`;
@@ -409,6 +449,10 @@ async function fetchOptionalJson(url, signal) {
   }
 }
 
+/* ===================================================================
+   NETWORK — CONTEXT NORMALIZERS
+   =================================================================== */
+// Esplora (mempool.space, Blockstream): native esplora tx object.
 function normalizeEsploraContext(context, tipHeight) {
   return {
     ...context,
@@ -420,6 +464,7 @@ function normalizeEsploraContext(context, tipHeight) {
   };
 }
 
+// Blockchain.com: maps its `inputs`/`out` shape to the esplora-compatible vin/vout format.
 function normalizeBlockchainContext(context, latestBlock) {
   return {
     ...context,
@@ -453,6 +498,7 @@ function normalizeBlockchainContext(context, latestBlock) {
   };
 }
 
+// BlockCypher: maps its `inputs`/`outputs` shape and ISO-8601 confirmed timestamp.
 function normalizeBlockCypherContext(context) {
   const blockTime = context.confirmed
     ? Math.floor(Date.parse(context.confirmed) / 1000)
@@ -485,6 +531,7 @@ function normalizeBlockCypherContext(context) {
   };
 }
 
+// Blockchair: extracts the transaction record from the nested data envelope.
 function normalizeBlockchairContext(context, txHash) {
   const txData = context.data?.[txHash] || {};
   const transaction = txData.transaction || txData;
@@ -518,42 +565,9 @@ function numberOrNull(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function renderLayer1Metadata(fields = [], hasHtmlStampDetails = false) {
-  const hasSrc20 = hasSrc20Identifier(fields);
-  const stampDataKeys = getStampDataKeys({ hasHtmlStampDetails, hasSrc20 });
-  const confirmationsField = fields.find((field) => field.key === "confirmations" && hasMetadataValue(field));
-  const layer1TopFields = BLOCK_DETAIL_TOP_KEYS.map((key) =>
-    fields.find((field) => field.key === key && hasMetadataValue(field)),
-  ).filter(Boolean);
-  const layer1Fields = fields.filter(
-    (field) =>
-      ![
-        "encoding_method",
-        "stamp_base64",
-        "file_hash",
-        "is_valid_base64",
-        "input_count",
-        "output_count",
-        "ident",
-        "confirmations",
-        ...BLOCK_DETAIL_TOP_KEYS,
-        ...stampDataKeys,
-      ].includes(field.key) &&
-      hasMetadataValue(field),
-  );
-  const layer1MetadataFields = [...layer1TopFields, ...layer1Fields];
-
-  renderMetadata(bitcoinDataList, layer1MetadataFields, {
-    pill:
-      confirmationsField && layer1MetadataFields.some((field) => field.key === "tx_hash")
-        ? {
-            targetKey: "tx_hash",
-            value: formatMetadataValue(confirmationsField.value, confirmationsField.key),
-          }
-        : null,
-  });
-}
-
+/* ===================================================================
+   METADATA — DATA HELPERS
+   =================================================================== */
 function hasSrc20Identifier(fields = []) {
   const identifier = fields.find((field) => field.key === "ident" && hasMetadataValue(field));
 
@@ -584,35 +598,6 @@ function hasHtmlStampMedia(media, fields = []) {
   const mimetype = fields.find((field) => field.key === "stamp_mimetype" && hasMetadataValue(field));
 
   return typeof mimetype?.value === "string" && mimetype.value.toLowerCase().includes("html");
-}
-
-function renderStampDataMetadata(fields = [], hasHtmlStampDetails = false, srcProtocol = null) {
-  const hasSrc20 = hasSrc20Identifier(fields);
-  const src20Operation = getSrc20Operation(fields);
-  const stampDataKeys = getStampDataKeys({ hasHtmlStampDetails, hasSrc20 });
-  const identifierField = fields.find((field) => field.key === "ident" && hasMetadataValue(field));
-  const identifierPillTarget = hasSrc20 ? "tick" : hasHtmlStampDetails ? "html_title" : "creator";
-  const baseStampDataFields = stampDataKeys.map((key) =>
-    fields.find((field) => field.key === key && hasMetadataValue(field)),
-  ).filter(Boolean).map((field) =>
-    field.key === "creator" && hasSrc20
-      ? { ...field, label: getSrc20CreatorLabel(src20Operation) }
-      : field,
-  );
-  const stampDataFields = insertSrc20ProtocolFields(
-    baseStampDataFields,
-    getSrc20ProtocolFields(srcProtocol, src20Operation),
-  );
-  stampDataPanel.open = true;
-  renderMetadata(stampDataList, stampDataFields, {
-    pill:
-      identifierField && stampDataFields.some((field) => field.key === identifierPillTarget)
-        ? {
-            targetKey: identifierPillTarget,
-            value: formatMetadataValue(identifierField.value, identifierField.key),
-          }
-        : null,
-  });
 }
 
 function getStampDataKeys({ hasHtmlStampDetails = false, hasSrc20 = false } = {}) {
@@ -699,6 +684,110 @@ function getSrc20CreatorLabel(operation) {
   return "Artist Addy";
 }
 
+function hasMetadataValue(field) {
+  const { value } = field;
+
+  if (value === null || value === undefined || value === "") {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+
+  return true;
+}
+
+/* ===================================================================
+   METADATA — RENDERING
+   =================================================================== */
+function renderLayer1Metadata(fields = [], hasHtmlStampDetails = false) {
+  const hasSrc20 = hasSrc20Identifier(fields);
+  const stampDataKeys = getStampDataKeys({ hasHtmlStampDetails, hasSrc20 });
+  const confirmationsField = fields.find((field) => field.key === "confirmations" && hasMetadataValue(field));
+  const layer1TopFields = BLOCK_DETAIL_TOP_KEYS.map((key) =>
+    fields.find((field) => field.key === key && hasMetadataValue(field)),
+  ).filter(Boolean);
+  const layer1Fields = fields.filter(
+    (field) =>
+      ![
+        "encoding_method",
+        "stamp_base64",
+        "file_hash",
+        "is_valid_base64",
+        "input_count",
+        "output_count",
+        "ident",
+        "confirmations",
+        ...BLOCK_DETAIL_TOP_KEYS,
+        ...stampDataKeys,
+      ].includes(field.key) &&
+      hasMetadataValue(field),
+  );
+  const layer1MetadataFields = [...layer1TopFields, ...layer1Fields];
+
+  renderMetadata(bitcoinDataList, layer1MetadataFields, {
+    // Attach a confirmations pill badge to the tx_hash row when both fields are present.
+    pill:
+      confirmationsField && layer1MetadataFields.some((field) => field.key === "tx_hash")
+        ? {
+            targetKey: "tx_hash",
+            value: formatMetadataValue(confirmationsField.value, confirmationsField.key),
+          }
+        : null,
+  });
+}
+
+function renderStampDataMetadata(fields = [], hasHtmlStampDetails = false, srcProtocol = null) {
+  const hasSrc20 = hasSrc20Identifier(fields);
+  const src20Operation = getSrc20Operation(fields);
+  const stampDataKeys = getStampDataKeys({ hasHtmlStampDetails, hasSrc20 });
+  const identifierField = fields.find((field) => field.key === "ident" && hasMetadataValue(field));
+  const identifierPillTarget = hasSrc20 ? "tick" : hasHtmlStampDetails ? "html_title" : "creator";
+  const baseStampDataFields = stampDataKeys.map((key) =>
+    fields.find((field) => field.key === key && hasMetadataValue(field)),
+  ).filter(Boolean).map((field) =>
+    field.key === "creator" && hasSrc20
+      ? { ...field, label: getSrc20CreatorLabel(src20Operation) }
+      : field,
+  );
+  const stampDataFields = insertSrc20ProtocolFields(
+    baseStampDataFields,
+    getSrc20ProtocolFields(srcProtocol, src20Operation),
+  );
+  stampDataPanel.open = true;
+  renderMetadata(stampDataList, stampDataFields, {
+    // Attach the ident badge (e.g. "SRC-20") to the primary identifier row.
+    pill:
+      identifierField && stampDataFields.some((field) => field.key === identifierPillTarget)
+        ? {
+            targetKey: identifierPillTarget,
+            value: formatMetadataValue(identifierField.value, identifierField.key),
+          }
+        : null,
+  });
+}
+
+function renderStampBase64(fields = [], shouldDisplay = true) {
+  const stampBase64Field = fields.find(
+    (field) => field.key === "stamp_base64" && hasMetadataValue(field),
+  );
+  const stampBase64Fields = ["encoding_method", "stamp_base64", "file_hash", "is_valid_base64"]
+    .map((key) => fields.find((field) => field.key === key && hasMetadataValue(field)))
+    .filter(Boolean);
+
+  stampBase64List.replaceChildren();
+  stampBase64Panel.open = false;
+
+  if (!shouldDisplay || !stampBase64Field) {
+    stampBase64Panel.hidden = true;
+    return;
+  }
+
+  renderMetadata(stampBase64List, stampBase64Fields);
+  stampBase64Panel.hidden = false;
+}
+
 function renderMetadata(list, fields = [], options = {}) {
   list.replaceChildren();
 
@@ -710,6 +799,8 @@ function renderMetadata(list, fields = [], options = {}) {
     term.textContent = formatMetadataLabel(field);
     description.textContent = formatMetadataValue(field.value, field.key);
 
+    // When a pill badge is configured for this field's key, wrap the label
+    // in a flex row and append the badge span alongside it.
     if (options.pill?.targetKey === field.key) {
       const pill = document.createElement("span");
 
@@ -726,6 +817,9 @@ function renderMetadata(list, fields = [], options = {}) {
   }
 }
 
+/* ===================================================================
+   METADATA — FORMATTING
+   =================================================================== */
 function formatMetadataLabel(field) {
   if (field.key === "html_author") {
     return "Artist";
@@ -752,40 +846,6 @@ function formatMetadataLabel(field) {
   }
 
   return field.label;
-}
-
-function renderStampBase64(fields = [], shouldDisplay = true) {
-  const stampBase64Field = fields.find(
-    (field) => field.key === "stamp_base64" && hasMetadataValue(field),
-  );
-  const stampBase64Fields = ["encoding_method", "stamp_base64", "file_hash", "is_valid_base64"]
-    .map((key) => fields.find((field) => field.key === key && hasMetadataValue(field)))
-    .filter(Boolean);
-
-  stampBase64List.replaceChildren();
-  stampBase64Panel.open = false;
-
-  if (!shouldDisplay || !stampBase64Field) {
-    stampBase64Panel.hidden = true;
-    return;
-  }
-
-  renderMetadata(stampBase64List, stampBase64Fields);
-  stampBase64Panel.hidden = false;
-}
-
-function hasMetadataValue(field) {
-  const { value } = field;
-
-  if (value === null || value === undefined || value === "") {
-    return false;
-  }
-
-  if (Array.isArray(value)) {
-    return value.length > 0;
-  }
-
-  return true;
 }
 
 function formatMetadataValue(value, key) {
@@ -877,6 +937,9 @@ function formatBlockDate(value) {
   return `${day}-${month}-${year}`;
 }
 
+/* ===================================================================
+   MEDIA PREVIEW
+   =================================================================== */
 function renderMedia(media) {
   mediaFrame.replaceChildren();
 
@@ -922,21 +985,16 @@ function formatMediaText(media) {
   }
 }
 
-function setLoading(isLoading) {
-  submitButton.disabled = isLoading;
-  providerSelect.disabled = isLoading;
-  txHashInput.disabled = isLoading;
-}
-
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
+/* ===================================================================
+   EVENT HANDLERS
+   =================================================================== */
+async function handleSearch() {
   const validation = validateTxHash(txHashInput.value);
-  setFieldError(validation.message);
+  setFieldValidity(validation.message);
 
   if (!validation.isValid) {
-    showEmptyState();
     setStatus(validation.message, "error");
+    showEmptyState();
     return;
   }
 
@@ -949,6 +1007,8 @@ form.addEventListener("submit", async (event) => {
     return;
   }
 
+  // Increment request ID and abort any in-flight request before starting a new one.
+  // After each await, stale requests are discarded by comparing against activeRequestId.
   activeRequestId += 1;
   const requestId = activeRequestId;
   activeController?.abort();
@@ -994,12 +1054,17 @@ form.addEventListener("submit", async (event) => {
       setLoading(false);
     }
   }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  handleSearch();
 });
 
 txHashInput.addEventListener("input", () => {
   if (txHashInput.getAttribute("aria-invalid") === "true") {
     const validation = validateTxHash(txHashInput.value);
-    setFieldError(validation.isValid ? "" : validation.message);
+    setFieldValidity(validation.isValid ? "" : validation.message);
     setStatus(
       validation.isValid ? "Transaction hash format looks valid." : validation.message,
       validation.isValid ? "success" : "error",
@@ -1007,6 +1072,9 @@ txHashInput.addEventListener("input", () => {
   }
 });
 
+/* ===================================================================
+   INITIALISATION
+   =================================================================== */
 loadWasmIndexer().then((indexer) => {
   wasmIndexer = indexer;
   setStatus(
