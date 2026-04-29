@@ -141,6 +141,12 @@ select {
   overflow: hidden;
 }
 
+/* ===== Icon container ===== */
+.container-iocn {
+  position: relative;
+  isolation: isolate;
+}
+
 /* ===== Pill container ===== */
 .container-pill {
   width: fit-content;
@@ -190,8 +196,6 @@ select {
 /* ===================================================================
    TEXT STYLES
    =================================================================== */
-
-
 h1,
 h2,
 h3,
@@ -282,7 +286,6 @@ dd {
 }
 
 
-
 /* ===================================================================
    FORM CONTROLS
    =================================================================== */
@@ -304,9 +307,10 @@ select {
 select {
   min-height: var(--size-xl);
   appearance: none;
+  padding-inline-end: calc(var(--size-xl) + var(--size-lg));
   color: var(--color-neutral-300);
   background:
-    linear-gradient(45deg, transparent 50%, var(--color-neutral-700) 50%) right var(--size-lg) top 50% / var(--size-sm) var(--size-sm) no-repeat,
+    url("./images/icons/chevron-down.svg") right var(--size-sm) center / 1.5rem 1.5rem no-repeat,
     var(--color-neutral-900);
 }
 
@@ -325,6 +329,21 @@ input[aria-invalid="true"] {
   font-size: var(--size-md);
   font-weight: 700;
 }
+
+/* ===================================================================
+   ICONS
+   =================================================================== */
+/* ===== Hero section icon ===== */
+.icon-stamp {
+  position: absolute;
+  top: 40px;
+  left: 440px;
+  z-index: -1;
+  width: 12rem;
+  height: auto;
+  pointer-events: none;
+}
+
 
 /* ===================================================================
    BUTTONS AND STATUS
@@ -601,9 +620,14 @@ input[aria-invalid="true"] {
     margin-block-start: var(--size-xl);
   }
 
+  .icon-stamp {
+    top: 36px;
+    left: 306px;
+    width: 8rem;
+  }
 }
 
-@media (max-width: 28rem) {
+@media (max-width: 30rem) {
   h1 {
     font-size: var(--size-3xl);
   }
@@ -614,5 +638,11 @@ input[aria-invalid="true"] {
 
   .caption {
     font-size: var(--size-sm);
+  }
+
+  .icon-stamp {
+    top: 8px;
+    left: 178px;
+    width: 4rem;
   }
 }

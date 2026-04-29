@@ -1,6 +1,6 @@
-# Stamp Explorer
+# Stamp Validator
 
-A small, self-contained browser app for looking up Bitcoin Stamps by Bitcoin
+A small, self-contained browser app for looking up Bitcoin Stamps on-chain metadata by Bitcoin
 transaction hash.
 
 ## Files

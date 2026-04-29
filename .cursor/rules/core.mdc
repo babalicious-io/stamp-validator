@@ -1,7 +1,7 @@
 ---
 alwaysApply: true
 ---
-# Stamp Explorer Core Rules
+# Stamp Validator Core Rules
 
 Build a small, self-contained Internet Archive page that lets users look up Bitcoin Stamps by Bitcoin transaction hash. Prefer clear browser code and deterministic Rust/Wasm logic over framework or service complexity.
 
