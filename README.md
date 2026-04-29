@@ -1,3 +1,5 @@
+![Stamp Validator](images/stamp-validator-hero.png)
+
 # Stamp Validator - Beta version
 
 A small, self-contained browser app for looking up Bitcoin Stamps on-chain metadata by Bitcoin
