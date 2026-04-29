@@ -27,7 +27,5 @@ rustup target add wasm32-unknown-unknown
 sh ./build-wasm.sh
 ```
 
-The app uses `mempool.space` by default, with Blockstream as an alternate
-read-only transaction data source. Stamp metadata and media are processed by the
-local Rust/Wasm indexer.
+The app uses `mempool.space` by default, with other public nodes as an alternate read-only transaction data source. Stamp metadata and media are processed by the local Rust/Wasm indexer.
 
