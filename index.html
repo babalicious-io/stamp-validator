@@ -14,14 +14,14 @@
   </head>
   <body>
     <main class="container-1">
-      <section class="container-2 container-iocn" aria-labelledby="page-title">
+      <section class="container-2 container-isolate" aria-labelledby="page-title">
         <img
           class="icon-stamp"
           src="./images/icons/stamp-outline.svg"
           alt=""
           aria-hidden="true"
         >
-        <p class="caption">On-Chain Bitcoin</p>
+        <p class="overline">On-Chain Bitcoin</p>
         <h1 id="page-title">Stamp Validator</h1>
         <p>
           Search Stamps on-chain on Bitcoin by entering a transaction hash.<br>The validator uses public Bitcoin nodes to provide raw transaction data and
@@ -35,9 +35,9 @@
           <div class="form-field provider-field">
             <label class="label" for="node-provider">Bitcoin node</label>
             <select id="node-provider" name="nodeProvider">
-              <option value="mempool" selected>mempool.space</option>
+              <option value="mempool" selected>Mempool</option>
               <option value="blockstream">Blockstream</option>
-              <option value="blockchain">Blockchain.com</option>
+              <option value="blockchain">Blockchain</option>
               <option value="blockcypher">BlockCypher</option>
               <option value="blockchair">Blockchair</option>
             </select>
@@ -52,17 +52,13 @@
               inputmode="text"
               autocomplete="off"
               spellcheck="false"
-              minlength="64"
-              maxlength="64"
               placeholder="64-character transaction hash"
-              aria-describedby="tx-hash-help tx-hash-error"
-              required
+              aria-required="true"
             >
-            <p class="field-error" id="tx-hash-error" role="alert"></p>
           </div>
           <div class="form-field">
             <label class="label">&nbsp;</label>
-          <button class="primary-button" type="submit">Search Stamp</button>
+          <button class="button button-flat-primary" type="submit">Search Stamp</button>
           </div>
         </form>
       </section>

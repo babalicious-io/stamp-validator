@@ -196,8 +196,8 @@ h2 {
     color: var(--color-primary-400);
 }
 
-/* ===== Caption ===== */
-.caption {
+/* ===== Overline ===== */
+.overline {
     margin: 0 0 var(--size-1);
     font-size: var(--size-2-5);
     font-weight: 700;
