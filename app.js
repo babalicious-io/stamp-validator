@@ -31,7 +31,6 @@ const form = document.querySelector("#stamp-search-form");
 const providerSelect = document.querySelector("#node-provider");
 const txHashInput = document.querySelector("#tx-hash");
 const txHashError = document.querySelector("#tx-hash-error");
-const statusMessage = document.querySelector("#status-message");
 const resultCard = document.querySelector("#stamp-result-card");
 const mediaPreview = document.querySelector("#media-preview");
 const mediaFrame = document.querySelector("#media-frame");
@@ -68,6 +67,7 @@ const SRC20_STAMP_DATA_KEYS = [
 let wasmIndexer = null;
 let activeRequestId = 0;
 let activeController = null;
+let statusMessage = null;
 let statusMessageTimeout = null;
 
 function normalizeTxHash(value) {
@@ -108,29 +108,53 @@ function validateTxHash(value) {
   };
 }
 
+function getStatusMessage() {
+  if (!statusMessage) {
+    statusMessage = document.createElement("output");
+    statusMessage.className = "message";
+    document.body.append(statusMessage);
+  }
+
+  return statusMessage;
+}
+
+function removeStatusMessage(statusElement) {
+  statusElement.remove();
+  if (statusMessage === statusElement) {
+    statusMessage = null;
+  }
+}
+
 function setStatus(message, type = "", autoDismiss = type !== "loading") {
   if (statusMessageTimeout) {
     clearTimeout(statusMessageTimeout);
     statusMessageTimeout = null;
   }
-  statusMessage.getAnimations().forEach((animation) => animation.cancel());
 
-  statusMessage.textContent = message;
-  statusMessage.classList.remove("success", "error", "loading");
-
-  if (type) {
-    statusMessage.classList.add(type);
-  }
-
-  if (!message) {
-    statusMessage.style.opacity = "0";
-    statusMessage.style.transform = "translateY(-20px)";
+  if (!message && !statusMessage) {
     return;
   }
 
-  statusMessage.style.opacity = "1";
-  statusMessage.style.transform = "translateY(0)";
-  statusMessage.animate(
+  const statusElement = getStatusMessage();
+  statusElement.getAnimations().forEach((animation) => animation.cancel());
+
+  statusElement.textContent = message;
+  statusElement.classList.remove("success", "error", "loading");
+
+  if (type) {
+    statusElement.classList.add(type);
+  }
+
+  if (!message) {
+    statusElement.style.opacity = "0";
+    statusElement.style.transform = "translateY(-20px)";
+    removeStatusMessage(statusElement);
+    return;
+  }
+
+  statusElement.style.opacity = "1";
+  statusElement.style.transform = "translateY(0)";
+  statusElement.animate(
     [
       { opacity: 0, transform: "translateY(-20px)" },
       { opacity: 1, transform: "translateY(0)" },
@@ -147,7 +171,7 @@ function setStatus(message, type = "", autoDismiss = type !== "loading") {
   }
 
   statusMessageTimeout = setTimeout(() => {
-    const fadeOut = statusMessage.animate(
+    const fadeOut = statusElement.animate(
       [
         { opacity: 1, transform: "translateY(0)" },
         { opacity: 0, transform: "translateY(-20px)" },
@@ -161,8 +185,7 @@ function setStatus(message, type = "", autoDismiss = type !== "loading") {
 
     fadeOut.finished
       .then(() => {
-        statusMessage.textContent = "";
-        statusMessage.classList.remove("success", "error", "loading");
+        removeStatusMessage(statusElement);
         statusMessageTimeout = null;
       })
       .catch(() => {});
@@ -920,7 +943,7 @@ form.addEventListener("submit", async (event) => {
   if (!wasmIndexer) {
     showEmptyState();
     setStatus(
-      "Rust/Wasm stamp indexer is not available. Build app.wasm from rust-indexer first.",
+      "Rust/Wasm stamp indexer is not available. Build app.wasm from indexer first.",
       "error",
     );
     return;

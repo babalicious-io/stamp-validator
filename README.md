@@ -10,7 +10,7 @@ transaction hash.
 - `app.js` handles input validation, node selection, raw transaction fetches, UI
   state, and Wasm calls.
 - `app.wasm` is the compiled Rust/Wasm stamp indexer.
-- `rust-indexer/` contains the Rust source for local transaction parsing, stamp
+- `indexer/` contains the Rust source for local transaction parsing, stamp
   payload extraction, metadata normalization, and media detection.
 
 ## Local Preview
