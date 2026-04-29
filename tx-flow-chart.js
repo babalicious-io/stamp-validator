@@ -1,10 +1,32 @@
+/* ===================================================================
+   CONSTANTS
+   =================================================================== */
 const SATS_PER_BTC = 100_000_000;
 
+/* ===================================================================
+   DOM REFERENCES
+   =================================================================== */
+// These four elements are owned exclusively by this file.
+// External code interacts with them only through resetTransactionFlow()
+// and renderTransactionFlow() — never by querying them directly.
 const transactionFlow = document.querySelector("#transaction-flow");
 const transactionFlowChart = document.querySelector("#transaction-flow-chart");
 const transactionFlowInputCount = document.querySelector("#transaction-flow-input-count");
 const transactionFlowOutputCount = document.querySelector("#transaction-flow-output-count");
 
+/* ===================================================================
+   PUBLIC API
+   =================================================================== */
+// Called by app.js when returning to the empty state.
+function resetTransactionFlow() {
+  transactionFlowChart.replaceChildren();
+  transactionFlowInputCount.textContent = "0";
+  transactionFlowOutputCount.textContent = "0";
+  transactionFlow.open = true;
+  transactionFlow.hidden = true;
+}
+
+// Called by app.js after a successful stamp lookup to render the flow diagram.
 function renderTransactionFlow(context, txHash) {
   transactionFlowChart.replaceChildren();
   transactionFlowInputCount.textContent = "0";
@@ -32,6 +54,11 @@ function renderTransactionFlow(context, txHash) {
   transactionFlow.hidden = false;
 }
 
+/* ===================================================================
+   INPUT / OUTPUT NORMALIZERS
+   =================================================================== */
+// Reconciles the vin field shapes returned by the Esplora, Blockchain.com,
+// and BlockCypher adapters into a uniform { index, label, value, reference } record.
 function normalizeFlowInputs(inputs = []) {
   return inputs.map((input, index) => {
     const prevout = input?.prevout || input?.prev_out || {};
@@ -52,6 +79,8 @@ function normalizeFlowInputs(inputs = []) {
   });
 }
 
+// Reconciles the vout field shapes returned by the Esplora, Blockchain.com,
+// and BlockCypher adapters into a uniform { index, label, value, reference } record.
 function normalizeFlowOutputs(outputs = []) {
   return outputs.map((output, index) => {
     const script = output?.scriptPubKey || {};
@@ -72,6 +101,12 @@ function normalizeFlowOutputs(outputs = []) {
   });
 }
 
+/* ===================================================================
+   SVG DIAGRAM
+   =================================================================== */
+// Builds the Sankey-style flow SVG: a single input chevron and trunk on the left,
+// fanning out to bezier output lines on the right, with stroke widths proportional
+// to each output's sat value relative to the total.
 function createFlowSvg(inputs, outputs, txHash) {
   const NS = "http://www.w3.org/2000/svg";
   const W = 1000;
@@ -184,6 +219,7 @@ function createFlowSvg(inputs, outputs, txHash) {
   return svg;
 }
 
+// Converts an array of heights into centred Y positions, evenly spaced by gap.
 function flowStack(heights, centerY, gap) {
   const total = heights.reduce((s, h) => s + h, 0) + gap * Math.max(0, heights.length - 1);
   let y = centerY - total / 2;
@@ -194,6 +230,7 @@ function flowStack(heights, centerY, gap) {
   });
 }
 
+// Appends a single color stop to an SVG linearGradient element.
 function appendGradientStop(gradient, offset, color) {
   const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
   stop.setAttribute("offset", offset);
@@ -201,6 +238,12 @@ function appendGradientStop(gradient, offset, color) {
   gradient.append(stop);
 }
 
+/* ===================================================================
+   FORMATTING UTILITIES
+   =================================================================== */
+// Normalises a raw value to satoshis. Integer values are assumed to already be
+// in satoshis; non-integer values are assumed to be in BTC and are multiplied
+// by SATS_PER_BTC to convert.
 function normalizeSats(value) {
   if (value === null || value === undefined || value === "") {
     return null;
@@ -217,16 +260,6 @@ function normalizeSats(value) {
   }
 
   return Math.round(amount * SATS_PER_BTC);
-}
-
-function formatSats(value) {
-  if (!Number.isFinite(value)) {
-    return "Value unavailable";
-  }
-
-  return `${(value / SATS_PER_BTC).toLocaleString("en-US", {
-    maximumFractionDigits: 8,
-  })} BTC`;
 }
 
 function formatCount(count, singular) {
