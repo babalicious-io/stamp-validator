@@ -17,20 +17,20 @@ transaction hash.
 
 ## Local Preview
 
-From the **repository root** (the folder that contains `App/`), run a local static server on port `8000`:
+From the **repository root** (this folder — the same place as `index.html`), run a local static server on port `8000`:
 
 ```sh
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-The app’s `index.html` lives under `App/`. Open the app at:
+Then open:
 
 ```text
-http://localhost:8000/App/
+http://127.0.0.1:8000/
 ```
 
-For a server that keeps running after the terminal command exits, start it as a
-detached process and save its process ID:
+For a server that keeps running after the terminal command exits, from the same
+directory start it as a detached process and save its process ID:
 
 ```sh
 nohup python3 -m http.server 8000 --bind 127.0.0.1 > .localhost-8000.log 2>&1 &
