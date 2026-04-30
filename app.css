@@ -147,7 +147,7 @@ main > footer p {
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding: var(--size-12) var(--size-24);
+  padding: var(--size-24);
   border: var(--border-width) solid transparent;
   border-radius: var(--border-radius-2);
   background:
@@ -315,7 +315,7 @@ h1 {
 }
 
 h2 {
-  margin-block-end: var(--size-4);
+  margin: calc(var(--size-8) * -1) 0 var(--size-8);
   font-size: var(--size-16);
   color: var(--color-primary-400);
 }
@@ -383,8 +383,16 @@ dd {
   color: var(--color-primary-600);
 }
 
+/* ===== Misc ===== */
 .title-faq {
   margin-block-end: var(--size-12);
+}
+
+.body-empty-state {
+  margin-block-end: calc(var(--size-8) * -1);
+  font-size: var(--size-16);
+  font-weight: 400;
+  color: var(--color-neutral-500);
 }
 
 
