@@ -20,15 +20,17 @@ The repository includes **`app.wasm`** so you can run the UI after cloning witho
 
 ## Quickstart
 
-Clone the repo, `cd` into the project root (the directory that contains `index.html`), then serve that folder:
+Clone the repo, then start the app (works from **`App/`** or from a parent folder such as **`Stamp Validator/`**):
 
 ```sh
 git clone <repository-url>
-cd <repo-folder>   # clone directory name varies
-python3 -m http.server 8000 --bind 127.0.0.1 --directory .
+# From the folder that contains App/ (e.g. Stamp Validator/):
+sh App/serve.sh
+# From inside App/:
+# sh ./serve.sh
 ```
 
-Open **`http://localhost:8000/`** in your browser.
+Open **`http://localhost:8000/`** in your browser (use **`127.0.0.1`** if localhost fails to connect).
 
 Avoid opening **`index.html` via `file://`**: the loader uses `fetch("./app.wasm")`, which reliably works when the app is served over HTTP/S from the same directory.
 
@@ -48,29 +50,43 @@ Avoid opening **`index.html` via `file://`**: the loader uses `fetch("./app.wasm
 - `app.wasm` — compiled Rust/Wasm stamp indexer (rebuild via `build-wasm.sh`).
 - `indexer/` — Rust source for local transaction parsing, stamp payload extraction, metadata normalization, and media detection.
 - `images/` — static assets including GitHub readme header art under `images/github/`.
+- `serve.sh` — **`python3 -m http.server`** on port **8000** (serves this folder; safe to run from a parent directory).
 
 ## Local preview
 
-From the repository root (`index.html` and `app.wasm` should be alongside this file):
+**Exit 127** means **`serve.sh` was not found** in your current directory — no server started, so the browser shows **connection refused**.
+
+From **`App/`** (this README’s folder):
 
 ```sh
-python3 -m http.server 8000 --bind 127.0.0.1 --directory "$(pwd)"
+sh ./serve.sh
 ```
 
-Stop the foreground server with **Ctrl+C**.
-
-### Optional: background server
+From the **parent of `App/`** (e.g. `Stamp Validator/`):
 
 ```sh
-nohup python3 -m http.server 8000 --bind 127.0.0.1 --directory "$(pwd)" > ~/.localhost-8000.log 2>&1 &
-echo $! > ~/.localhost-8000.pid
+sh App/serve.sh
 ```
 
-Stop and clean up:
+If a **`serve.sh`** also exists in that parent, **`sh ./serve.sh`** there forwards to **`App/`** — same effect.
+
+Stop with **Ctrl+C**.
+
+Background:
 
 ```sh
-kill "$(cat ~/.localhost-8000.pid)"
-rm -f ~/.localhost-8000.pid ~/.localhost-8000.log
+# From App/
+nohup sh ./serve.sh > ~/.localhost-8000.log 2>&1 &
+
+# From parent of App/
+nohup sh App/serve.sh > ~/.localhost-8000.log 2>&1 &
+```
+
+Stop whatever is listening on **8000**:
+
+```sh
+pids=$(lsof -nP -iTCP:8000 -sTCP:LISTEN -t)
+[ -n "$pids" ] && kill $pids
 ```
 
 Check whether port **8000** is already listening:

@@ -3,9 +3,13 @@
 //! Decodes a hex-encoded raw transaction binary and extracts the Bitcoin Stamp
 //! payload from two possible encoding methods:
 //!
-//! - **MULTISIG**: Data is hidden inside fake public keys in an
-//!   `OP_CHECKMULTISIG` output script, ARC4-encrypted with the first input's
-//!   previous transaction ID as the decryption key.
+//! - **MULTISIG**: Data is hidden inside fake public keys in one or more
+//!   `OP_CHECKMULTISIG` output scripts. Inner pubkey bytes (excluding the first
+//!   and last byte of each push) from **every** pubkey in **every** such output
+//!   are concatenated in vout order, then ARC4-decrypted once using the first
+//!   input's previous transaction ID as the key — matching
+//!   [btc_stamps](https://github.com/stampchain-io/btc_stamps)
+//!   (`pubkeys_compiled` + `decode_checkmultisig`).
 //! - **OLGA / P2WSH**: Data is spread across consecutive P2WSH
 //!   (pay-to-witness-script-hash) output scripts starting at index 1 and
 //!   concatenated in order.
@@ -146,6 +150,8 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
 
     let output_count = cursor.read_varint()?;
     let mut p2wsh_chunks = Vec::new();
+    let mut multisig_ciphertext = Vec::new();
+    let mut saw_multisig_output = false;
     let mut payload = None;
     let mut has_valid_pattern = false;
     let mut has_valid_data = false;
@@ -167,16 +173,13 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
         }
 
         if has_op_checkmultisig {
-            if let Some(decrypted_payload) =
-                extract_multisig_payload(script, prev_txids.first().map(String::as_str))
-            {
-                payload = Some(decrypted_payload);
-                has_valid_pattern = true;
-                has_valid_data = true;
-                keyburn = 1;
-                encoding_method = Some("MULTISIG".to_string());
-            }
+            saw_multisig_output = true;
+            append_multisig_inner_ciphertext(script, &mut multisig_ciphertext);
         }
+    }
+
+    if saw_multisig_output {
+        has_valid_pattern = true;
     }
 
     // Consume witness data to reach the locktime field and measure witness size.
@@ -216,6 +219,19 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
         }
     }
 
+    // MULTISIG: single ARC4 decrypt over ciphertext from all multisig outputs
+    // (btc_stamps `pubkeys_compiled`). Tried when OLGA did not yield data.
+    if !has_valid_data && !multisig_ciphertext.is_empty() {
+        if let Some(decrypted_payload) =
+            decrypt_concatenated_multisig(&multisig_ciphertext, prev_txids.first().map(String::as_str))
+        {
+            payload = Some(decrypted_payload);
+            has_valid_data = true;
+            keyburn = 1;
+            encoding_method = Some("MULTISIG".to_string());
+        }
+    }
+
     Ok(ParsedTransaction {
         payload,
         has_valid_pattern,
@@ -230,26 +246,20 @@ pub fn parse_transaction(raw_tx_hex: &str) -> Result<ParsedTransaction, String> 
 //   PAYLOAD EXTRACTION
 // ===================================================================
 
-/// Extracts and ARC4-decrypts the stamp payload from a MULTISIG output script.
-///
-/// The first two push-data items are the fake public keys. Their inner bytes
-/// (excluding the leading and trailing length bytes) are concatenated and
-/// decrypted using the previous transaction's ID as the RC4 key.
-fn extract_multisig_payload(script: &[u8], prev_txid: Option<&str>) -> Option<Vec<u8>> {
-    let pubkeys = push_data_items(script);
-    if pubkeys.len() < 2 {
-        return None;
-    }
-
-    let mut encrypted = Vec::new();
-    for pubkey in pubkeys.iter().take(2) {
+/// Appends inner "pubkey" slices from a single `OP_CHECKMULTISIG` script: for
+/// each push longer than two bytes, bytes `1..len-1` (mirrors Python
+/// `pubkey[1:-1]`).
+fn append_multisig_inner_ciphertext(script: &[u8], out: &mut Vec<u8>) {
+    for pubkey in push_data_items(script) {
         if pubkey.len() > 2 {
-            encrypted.extend_from_slice(&pubkey[1..pubkey.len() - 1]);
+            out.extend_from_slice(&pubkey[1..pubkey.len() - 1]);
         }
     }
+}
 
+fn decrypt_concatenated_multisig(ciphertext: &[u8], prev_txid: Option<&str>) -> Option<Vec<u8>> {
     let seed = hex_to_bytes(prev_txid?).ok()?;
-    let decrypted = arc4::decrypt(&encrypted, &seed);
+    let decrypted = arc4::decrypt(ciphertext, &seed);
     extract_length_prefixed_payload(&decrypted)
 }
 
@@ -396,5 +406,42 @@ mod tests {
         let mut data = vec![0, 6];
         data.extend_from_slice(b"GIF87a");
         assert_eq!(extract_length_prefixed_payload(&data).unwrap(), b"GIF87a");
+    }
+
+    /// MULTISIG stamps concatenate inner pubkey bytes from every multisig
+    /// output before one ARC4 decrypt (btc_stamps behaviour).
+    #[test]
+    fn multisig_concatenated_decrypt_matches_single_output_inner() {
+        let prev_txid = "9f501abcfd91488c94be1e5d576220f1a6c4928cecb538e882eb0a8bc0fd2d80";
+        let seed = hex_to_bytes(prev_txid).unwrap();
+
+        let mut plain = vec![0u8, 11];
+        plain.extend_from_slice(b"stamp:hello");
+        let on_chain = crate::arc4::decrypt(&plain, &seed);
+
+        // One OP_CHECKMULTISIG-shaped script: single push of 15 bytes; inner [1..14] = 13 = on_chain.
+        let mut script = Vec::new();
+        script.push(0x0f); // push 15 bytes
+        script.push(0x02);
+        script.extend_from_slice(&on_chain);
+        script.push(0x02);
+        script.push(OP_CHECKMULTISIG);
+
+        let mut ciphertext = Vec::new();
+        append_multisig_inner_ciphertext(&script, &mut ciphertext);
+        assert_eq!(ciphertext, on_chain);
+
+        let out = decrypt_concatenated_multisig(&ciphertext, Some(prev_txid)).unwrap();
+        assert_eq!(out, b"hello");
+    }
+
+    #[test]
+    fn multisig_inner_bytes_concatenate_in_output_order() {
+        let mut ciphertext = Vec::new();
+        let s1 = vec![3u8, 0xaa, 0xbb, 0xaa, OP_CHECKMULTISIG];
+        let s2 = vec![3u8, 0xcc, 0xdd, 0xcc, OP_CHECKMULTISIG];
+        append_multisig_inner_ciphertext(&s1, &mut ciphertext);
+        append_multisig_inner_ciphertext(&s2, &mut ciphertext);
+        assert_eq!(ciphertext, vec![0xbb, 0xdd]);
     }
 }
