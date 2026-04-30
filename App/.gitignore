@@ -1,5 +1,6 @@
 .DS_Store
 *.log
+*.pid
 node_modules/
 dist/
 target/
