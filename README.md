@@ -17,20 +17,37 @@ transaction hash.
 
 ## Local Preview
 
-From the **repository root** (this folder — the same place as `index.html`), run a local static server on port `8000`:
+The **git repository root** is the `App` folder on disk (the one that contains
+`index.html`, `.git`, and this README). On your machine that path may look like
+`…/Stamp Validator/App/`.
+
+**Not** the parent folder `…/Stamp Validator/` — that directory only has
+sibling folders like `App/`, `Docs/`, and `Media/`, and **no** `index.html` at
+the top level. If you start the server there, `http://localhost:8000/` shows a
+directory listing instead of the app.
+
+From **inside** the repo root, run a local static server on port `8000`:
 
 ```sh
+cd /path/to/your-repo/App   # e.g. …/Stamp Validator/App
+python3 -m http.server 8000 --bind 127.0.0.1
+```
+
+If your terminal is already somewhere inside the cloned repo:
+
+```sh
+cd "$(git rev-parse --show-toplevel)"
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
 Then open:
 
 ```text
-http://127.0.0.1:8000/
+http://localhost:8000/
 ```
 
-For a server that keeps running after the terminal command exits, from the same
-directory start it as a detached process and save its process ID:
+For a server that keeps running after the terminal command exits, **from the repo root**
+(the directory where `index.html` lives), start it as a detached process and save its process ID:
 
 ```sh
 nohup python3 -m http.server 8000 --bind 127.0.0.1 > .localhost-8000.log 2>&1 &
@@ -59,5 +76,5 @@ rustup target add wasm32-unknown-unknown
 sh ./build-wasm.sh
 ```
 
-The app uses `mempool.space` by default, with other public nodes as an alternate read-only transaction data source. Stamp metadata and media are processed by the local Rust/Wasm indexer.
+The app uses `mempool.space` as the default Bitcoin node, with other public nodes as alternate read-only transaction data sources. Stamp metadata and media are processed by the local Rust/Wasm indexer.
 
