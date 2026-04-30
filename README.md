@@ -1,4 +1,4 @@
-![Stamp Validator](images/github-logo-light-2000x1125.png)
+![Stamp Validator](images/github-logo-light-2000x875.png)
 
 # Stamp Validator - Beta version
 
