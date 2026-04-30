@@ -17,16 +17,16 @@ transaction hash.
 
 ## Local Preview
 
-From the project root, run a local static server on port `8000`:
+From the **repository root** (the folder that contains `App/`), run a local static server on port `8000`:
 
 ```sh
 python3 -m http.server 8000 --bind 127.0.0.1
 ```
 
-Then open:
+The app’s `index.html` lives under `App/`. Open the app at:
 
 ```text
-http://localhost:8000/
+http://localhost:8000/App/
 ```
 
 For a server that keeps running after the terminal command exits, start it as a
