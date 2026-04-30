@@ -106,6 +106,26 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>) {
         return (media, None);
     }
 
+    // Bare base64 payload: old Counterparty stamps store the image as a raw
+    // base64 string in the CP issuance description (e.g. `STAMP:PCFET0…`).
+    // After the `STAMP:` prefix is stripped and binary overhead trimmed in
+    // `tx.rs`, the payload arrives here as pure base64 text.  Decode it once
+    // and re-process the inner binary bytes so the media detector sees the
+    // actual content (HTML, PNG, GIF, …) rather than opaque ASCII.
+    if !text.starts_with("data:")
+        && text.len() >= 8
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'+' | b'/' | b'='))
+    {
+        if let Some(decoded) = decode_base64_lax(&text) {
+            let inner_mime = sniff_mimetype(&decoded);
+            if media_kind(&inner_mime) != "binary" {
+                return media_from_payload(&decoded);
+            }
+        }
+    }
+
     // Binary branch: sniff MIME type from magic bytes and base64-encode images
     // and HTML for browser rendering.
     let mimetype = sniff_mimetype(payload);
@@ -432,6 +452,22 @@ fn base64_encode(bytes: &[u8]) -> String {
     output
 }
 
+/// Decodes a base64 string that may lack `=` padding by appending the
+/// necessary padding characters before calling [`base64_decode`].  Returns
+/// `None` when decoding fails.
+fn decode_base64_lax(value: &str) -> Option<Vec<u8>> {
+    let need = (4 - value.len() % 4) % 4;
+    if need == 0 {
+        base64_decode(value).ok()
+    } else {
+        let mut padded = value.to_string();
+        for _ in 0..need {
+            padded.push('=');
+        }
+        base64_decode(&padded).ok()
+    }
+}
+
 /// Decodes a standard base64 string into bytes. Requires the input to be
 /// padded to a multiple of 4 characters. Returns an error for invalid input.
 fn base64_decode(value: &str) -> Result<Vec<u8>, String> {
@@ -546,6 +582,29 @@ mod tests {
         assert!(media.text.is_none());
         assert!(media.is_valid_base64);
         assert!(json.is_none());
+    }
+
+    #[test]
+    fn decodes_bare_base64_html_payload() {
+        // Simulates a classic Counterparty stamp whose payload is raw base64
+        // (no `data:` prefix) encoding an HTML document.
+        let html = b"<!DOCTYPE html><html><body>Stamp</body></html>";
+        let b64 = base64_encode(html);
+        let (media, _) = media_from_payload(b64.as_bytes());
+        assert_eq!(media.kind, "html");
+        assert_eq!(media.mimetype.as_deref(), Some("text/html"));
+        assert!(media.data_url.is_some());
+        assert!(media.is_valid_base64);
+    }
+
+    #[test]
+    fn decodes_bare_base64_png_payload() {
+        // PNG magic bytes base64-encoded without a data: wrapper.
+        let png_magic = b"\x89PNG\r\n\x1a\nFAKE";
+        let b64 = base64_encode(png_magic);
+        let (media, _) = media_from_payload(b64.as_bytes());
+        assert_eq!(media.kind, "image");
+        assert_eq!(media.mimetype.as_deref(), Some("image/png"));
     }
 
     #[test]
