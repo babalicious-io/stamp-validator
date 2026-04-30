@@ -8,6 +8,22 @@
       content="Look up Bitcoin Stamps by Bitcoin transaction hash."
     >
     <title>Stamp Validator</title>
+    <!-- ICO + sizes first so Chromium can prefer adaptive SVG next; PNG last for Safari / non-SVG. -->
+    <link rel="icon" href="/images/favicon/favicon.ico" sizes="32x32">
+    <link rel="icon" type="image/svg+xml" href="/images/favicon/favicon.svg">
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/favicon/favicon-96x96.png"
+      sizes="96x96"
+    >
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/images/favicon/apple-touch-icon.png"
+    >
+    <meta name="apple-mobile-web-app-title" content="Stamp Validator">
+    <link rel="manifest" href="/images/favicon/site.webmanifest">
     <link rel="stylesheet" href="./app.css">
     <script src="./tx-flow-chart.js" defer></script>
     <script src="./app.js" defer></script>
@@ -29,8 +45,8 @@
         </p>
       </section>
 
-      <section class="container-2" aria-labelledby="search-title">
-        <h2 id="search-title">Validate</h2>
+      <section class="container-2" aria-labelledby="title-validate">
+        <h2 id="title-validate">Validate</h2>
         <form class="container-grid-3" id="stamp-search-form" novalidate>
           <div class="form-field provider-field">
             <label class="label" for="node-provider">Bitcoin node</label>
@@ -63,11 +79,11 @@
         </form>
       </section>
 
-      <section class="container-2" aria-labelledby="result-title">
-        <h2 id="result-title">Result</h2>
+      <section class="container-2" aria-labelledby="title-result">
+        <h2 id="title-result">Result</h2>
         <article class="" id="stamp-result-card" hidden>
           <div class="container-grid-2 result-detail-grid">
-            <div class="container-column result-visuals">
+            <div class="container-column container-gap">
               <div class="container-3 media-preview" id="media-preview" hidden>
                 <div class="media-frame" id="media-frame"></div>
               </div>
@@ -103,7 +119,7 @@
               </details>
             </div>
 
-            <div class="container-column metadata-panels">
+            <div class="container-column container-gap">
               <details class="container-3 collapsible" id="stamp-data-panel" open>
                 <summary class="container-row container-row--center collapsible-header">
                   <h4>Stamp Details</h4>
@@ -130,6 +146,136 @@
           Stamp metadata will display here.
         </p>
       </section>
+
+      <section class="container-2" aria-labelledby="title-faq">
+        <h2 class="title-faq" id="title-faq">FAQ</h2>
+        <div class="container-column container-gap-sm">
+          <details class="container-3 collapsible">
+            <summary class="container-row container-row--center collapsible-header">
+              <h4>What are Bitcoin Stamps?</h4>
+              <span class="collapsible-toggle" aria-hidden="true">
+                <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+              </span>
+            </summary>
+            <p>
+              A Bitcoin Stamp is a digital artifact written directly into Bitcoin transaction data.
+              Instead of pointing to an external file, the artwork itself is encoded on-chain,
+              making it permanent, immutable, and easy to verify from the original transaction.
+            </p>
+            <p>
+              Classic Stamps store art images as base64 data using the Counterparty protocol.
+              Because the data lives in Bitcoin outputs rather than prunable storage, it is
+              designed to remain preserved by full Bitcoin nodes.
+            </p>
+            <p>
+              SRC-20 extends the Stamp idea from art to tokens. It defines a simple standard
+              for deploying, minting, and transferring fungible tokens on Bitcoin using Stamp
+              data, with current SRC-20 activity encoded directly on BTC.
+            </p>
+          </details>
+
+          <details class="container-3 collapsible">
+            <summary class="container-row container-row--center collapsible-header">
+              <h4>How does the Stamp Validator work?</h4>
+              <span class="collapsible-toggle" aria-hidden="true">
+                <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+              </span>
+            </summary>
+            <p>
+              When you enter a transaction hash, the validator asks a public Bitcoin node for the raw transaction data.
+              This is the same source of truth a block explorer would read, the app uses it to fetch the
+              transaction and bring the raw Bitcoin data back into your browser.
+            </p>
+            <p>
+              The app runs a small Rust indexer, compiled to WebAssembly, that checks the transaction locally. It looks for known
+              Stamp patterns, extracts any metadata it can find, and turns the result into organised readable text, with a
+              stamp image and data or token metadata. So you can verify whether the transaction contains a valid Bitcoin Stamp.
+            </p>
+          </details>
+
+          <details class="container-3 collapsible">
+            <summary class="container-row container-row--center collapsible-header">
+              <h4>What Stamp metadata is available on Bitcoin L1?</h4>
+              <span class="collapsible-toggle" aria-hidden="true">
+                <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+              </span>
+            </summary>
+            <p>
+              The validator fetches the raw transaction from Bitcoin L1 through public nodes, then extracts and displays:
+            </p>
+            <p><strong>General</strong></p>
+            <ul>
+              <li>Transaction hash, block index, block time, confirmations, fee, and virtual size.</li>
+              <li>Creator address, keyburn status, Stamp hash, and valid Bitcoin Stamp status.</li>
+            </ul>
+            <p><strong>Art Stamps specific (CLASSIC/SRC-721)</strong></p>
+            <ul>
+              <li>File type, file size, encoding method, file hash, and base64 validity.</li>
+              <li>Base64 image data, plus title and artist when the Stamp includes them.</li>
+            </ul>
+            <p><strong>Token specific (SRC-20)</strong></p>
+            <ul>
+              <li>Token ticker, transaction type, and sender, creator, mint, or receiver address.</li>
+              <li>Amount, max supply, and mint limit when included in the SRC-20 payload.</li>
+            </ul>
+          </details>
+
+          <details class="container-3 collapsible">
+            <summary class="container-row container-row--center collapsible-header">
+              <h4>What Stamp metadata is only available on the Stamp protocol and its APIs?</h4>
+              <span class="collapsible-toggle" aria-hidden="true">
+                <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+              </span>
+            </summary>
+            <p>
+              The Stamp protocol and the Stampchain APIs add meaning on top of raw Bitcoin L1 data. They connect many transactions,
+              Counterparty records, indexed protocol rules, cached media, holder data, and market data that cannot be fully
+              known from one raw Bitcoin transaction alone.
+            </p>
+            <p><strong>General</strong></p>
+            <ul>
+              <li>Canonical Stamp number, CPID or asset ID, transaction index, message index, and protocol status.</li>
+              <li>Creator names, balances, holder counts, collection data, cached media URLs, and explorer-ready records.</li>
+            </ul>
+            <p><strong>Art Stamps specific (STAMP/SRC-721)</strong></p>
+            <ul>
+              <li>Asset supply, locked or divisible status, reissue status, collection membership, and rendered Stamp media.</li>
+              <li>Marketplace context such as floor price, market cap, recent sale data, and available listing information.</li>
+            </ul>
+            <p><strong>Token specific (SRC-20)</strong></p>
+            <ul>
+              <li>Current token state, valid deploy history, minted supply, holder balances, and full transfer history.</li>
+              <li>Token market data such as price, market cap, 24h or 7d volume, price change, and holder distribution.</li>
+            </ul>
+            <p>Check your transaction on <a href="https://stampchain.io" target="_blank">stampchain.io</a> to see all Stamp metadata.</p>
+          </details>
+
+          <details class="container-3 collapsible">
+            <summary class="container-row container-row--center collapsible-header">
+              <h4>How can I learn more about Stamps?</h4>
+              <span class="collapsible-toggle" aria-hidden="true">
+                <img class="collapsible-toggle-icon" src="./images/icons/plus.svg" alt="">
+              </span>
+            </summary>
+            <p>
+              Bitcoin Stamp is still a young protocol, shaped by builders, artists, collectors, and token communities who
+              care about permanent data on Bitcoin. The community is vibrant, supportive, and inclusive, making it a
+              good place to ask questions, follow new standards, and learn from people creating and collecting Stamps.
+            </p>
+            <p>
+              Follow <a href="https://x.com/Stampchain" target="_blank">Stampchain on X</a> for updates, join the
+              <a href="https://t.me/BitcoinStamps" target="_blank">Bitcoin Stamps Telegram</a> to meet the community, and read
+              the <a href="https://github.com/stampchain-io" target="_blank">Stampchain GitHub pages</a> for protocol specs,
+              indexer code, API docs, and open-source tools.
+            </p>
+          </details>
+        </div>
+      </section>
+  
+      <footer class="container-row container-row--center" aria-label="Site footer">
+        <span>Version&nbsp;&nbsp;v1.0.0</span>
+        <p>Built by&nbsp;&nbsp;<a href="https://stampchain.io" target="_blank">Stampchain</a></p>
+      </footer>
     </main>
   </body>
 </html>
