@@ -1,10 +1,10 @@
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="images/github/github-logo-dark-2000x875.png">
   <source media="(prefers-color-scheme: light)" srcset="images/github/github-logo-light-2000x875.png">
-  <img alt="Stamp Validator" src="images/github-logo-light-2000x875.png">
+  <img alt="Stamp Validator" src="images/github/github-logo-light-2000x875.png">
 </picture>
 
-# Stamp Validator - Beta version
+# Stamp Validator
 
 A small, self-contained browser app for looking up Bitcoin Stamps on-chain metadata by Bitcoin
 transaction hash.
