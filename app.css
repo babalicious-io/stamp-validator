@@ -434,7 +434,7 @@ input[aria-invalid="true"] {
 /* ===== Hero section icon ===== */
 .icon-stamp {
   position: absolute;
-  top: 40px;
+  top: 52px;
   left: 500px;
   z-index: -1;
   width: 12rem;
@@ -696,7 +696,7 @@ input[aria-invalid="true"] {
   }
 
   .icon-stamp {
-    top: 35px;
+    top: 47px;
     left: 350px;
     width: 8rem;
   }
@@ -717,7 +717,7 @@ input[aria-invalid="true"] {
   }
 
   .icon-stamp {
-    top: 24px;
+    top: 36px;
     left: 204px;
     width: 4rem;
   }
