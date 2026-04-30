@@ -17,48 +17,26 @@ transaction hash.
 
 ## Local Preview
 
-The **git repository root** is the `App` folder on disk (the one that contains
-`index.html`, `.git`, and this README). On your machine that path may look like
-`…/Stamp Validator/App/`.
-
-**Not** the parent folder `…/Stamp Validator/` — that directory only has
-sibling folders like `App/`, `Docs/`, and `Media/`, and **no** `index.html` at
-the top level. If you start the server there, `http://localhost:8000/` shows a
-directory listing instead of the app.
-
-From **inside** the repo root, run a local static server on port `8000`:
+Run from any directory (replace the path if needed):
 
 ```sh
-cd /path/to/your-repo/App   # e.g. …/Stamp Validator/App
-python3 -m http.server 8000 --bind 127.0.0.1
+python3 -m http.server 8000 --bind 127.0.0.1 --directory ~/Development/Apps/"Stamp Validator"/App
 ```
 
-If your terminal is already somewhere inside the cloned repo:
+Then open **`http://localhost:8000/`** — loads `index.html` directly.
+
+To keep the server running after the terminal exits:
 
 ```sh
-cd "$(git rev-parse --show-toplevel)"
-python3 -m http.server 8000 --bind 127.0.0.1
+nohup python3 -m http.server 8000 --bind 127.0.0.1 --directory ~/Development/Apps/"Stamp Validator"/App > ~/.localhost-8000.log 2>&1 &
+echo $! > ~/.localhost-8000.pid
 ```
 
-Then open:
-
-```text
-http://localhost:8000/
-```
-
-For a server that keeps running after the terminal command exits, **from the repo root**
-(the directory where `index.html` lives), start it as a detached process and save its process ID:
+To stop it:
 
 ```sh
-nohup python3 -m http.server 8000 --bind 127.0.0.1 > .localhost-8000.log 2>&1 &
-echo $! > .localhost-8000.pid
-```
-
-To stop the detached server:
-
-```sh
-kill "$(cat .localhost-8000.pid)"
-rm -f .localhost-8000.pid .localhost-8000.log
+kill "$(cat ~/.localhost-8000.pid)"
+rm -f ~/.localhost-8000.pid ~/.localhost-8000.log
 ```
 
 To check whether port `8000` is already in use:
