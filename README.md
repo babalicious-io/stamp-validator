@@ -22,33 +22,24 @@ The repository includes **`app.wasm`** so you can run the UI after cloning witho
 
 ```sh
 git clone <repository-url>
+cd <repo-folder>
+sh ./serve.sh
 ```
 
-One shell script — **[`serve.sh`](serve.sh)** — sits next to **`index.html`**. Use **one** command from **any** working directory: an outer folder that contains **`App/`** (Cursor workspace), **inside the git repo**, or **any subdirectory of that repo**:
+This assumes the cloned repo folder contains **`index.html`**, **`app.wasm`**, and **`serve.sh`**. The script serves the repo folder on **`127.0.0.1:${PORT:-8000}`** and opens the app in your default browser. Use **`PORT=9000 sh ./serve.sh`** to pick another port.
 
-```sh
-[ -f App/serve.sh ] && exec sh App/serve.sh
-top=$(git rev-parse --show-toplevel 2>/dev/null)
-[ -n "$top" ] && cd "$top" && exec sh ./serve.sh
-echo "Could not find serve.sh — run from a folder that contains App/, or from inside the git checkout." >&2
-exit 1
-```
-
-It serves the app on **`127.0.0.1:${PORT:-8000}`** (override with **`PORT=9000`** in the environment) and opens that URL via Python’s **`webbrowser`**. Do not use **`file://`** on **`index.html`** — **`fetch("./app.wasm")`** needs HTTP.
+Do not open **`index.html`** via **`file://`**: **`fetch("./app.wasm")`** needs HTTP.
 
 ### Listener
 
-Nothing listens until you run **[`serve.sh`](serve.sh)**. That script starts **`python3 -m http.server`**, which is the process listening on **TCP port** **`${PORT:-8000}`** (connect at **`http://127.0.0.1:`** that port).
+Nothing listens until you run **[`serve.sh`](serve.sh)**. That script starts **`python3 -m http.server`**, which is the process listening on **TCP port 8000** by default.
 
-**Ctrl+C** stops the server (when run in the foreground). Background:
+**Ctrl+C** stops the foreground server.
+
+Background:
 
 ```sh
-nohup sh -c '
-[ -f App/serve.sh ] && exec sh App/serve.sh
-top=$(git rev-parse --show-toplevel 2>/dev/null)
-[ -n "$top" ] && cd "$top" && exec sh ./serve.sh
-exit 1
-' > ~/.localhost-8000.log 2>&1 &
+nohup sh ./serve.sh > ~/.localhost-8000.log 2>&1 &
 ```
 
 Check whether port **8000** is already listening (**`PORT`** if you changed it, e.g. **9000**):
@@ -82,7 +73,7 @@ Use **`lsof -nP -iTCP:8000 -sTCP:LISTEN`** only **while `serve.sh` is supposed t
 - `app.wasm` — compiled Rust/Wasm stamp indexer (rebuild via `build-wasm.sh`).
 - `indexer/` — Rust source for local transaction parsing, stamp payload extraction, metadata normalization, and media detection.
 - `images/` — static assets including GitHub readme header art under `images/github/`.
-- `serve.sh` — starts the **HTTP listener** (**`python3 -m http.server`**) for local preview, optional env **`PORT`**, opens the UI in the default browser.
+- `serve.sh` — starts the local **`python3 -m http.server`** preview, optional env **`PORT`**, opens the UI in the default browser.
 
 ## Build Wasm
 
