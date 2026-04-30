@@ -17,8 +17,38 @@ transaction hash.
 
 ## Local Preview
 
-Use any static file server from the project root, then open the served
-`index.html` page in a browser.
+From the project root, run a local static server on port `8000`:
+
+```sh
+python3 -m http.server 8000 --bind 127.0.0.1
+```
+
+Then open:
+
+```text
+http://localhost:8000/
+```
+
+For a server that keeps running after the terminal command exits, start it as a
+detached process and save its process ID:
+
+```sh
+nohup python3 -m http.server 8000 --bind 127.0.0.1 > .localhost-8000.log 2>&1 &
+echo $! > .localhost-8000.pid
+```
+
+To stop the detached server:
+
+```sh
+kill "$(cat .localhost-8000.pid)"
+rm -f .localhost-8000.pid .localhost-8000.log
+```
+
+To check whether port `8000` is already in use:
+
+```sh
+lsof -nP -iTCP:8000 -sTCP:LISTEN
+```
 
 ## Build Wasm
 
