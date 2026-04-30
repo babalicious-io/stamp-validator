@@ -20,19 +20,51 @@ The repository includes **`app.wasm`** so you can run the UI after cloning witho
 
 ## Quickstart
 
-Clone the repo, then start the app (works from **`App/`** or from a parent folder such as **`Stamp Validator/`**):
-
 ```sh
 git clone <repository-url>
-# From the folder that contains App/ (e.g. Stamp Validator/):
-sh App/serve.sh
-# From inside App/:
-# sh ./serve.sh
 ```
 
-Open **`http://localhost:8000/`** in your browser (use **`127.0.0.1`** if localhost fails to connect).
+One shell script — **[`serve.sh`](serve.sh)** — sits next to **`index.html`**. Use **one** command from **any** working directory: an outer folder that contains **`App/`** (Cursor workspace), **inside the git repo**, or **any subdirectory of that repo**:
 
-Avoid opening **`index.html` via `file://`**: the loader uses `fetch("./app.wasm")`, which reliably works when the app is served over HTTP/S from the same directory.
+```sh
+[ -f App/serve.sh ] && exec sh App/serve.sh
+top=$(git rev-parse --show-toplevel 2>/dev/null)
+[ -n "$top" ] && cd "$top" && exec sh ./serve.sh
+echo "Could not find serve.sh — run from a folder that contains App/, or from inside the git checkout." >&2
+exit 1
+```
+
+It serves the app on **`127.0.0.1:${PORT:-8000}`** (override with **`PORT=9000`** in the environment) and opens that URL via Python’s **`webbrowser`**. Do not use **`file://`** on **`index.html`** — **`fetch("./app.wasm")`** needs HTTP.
+
+### Listener
+
+Nothing listens until you run **[`serve.sh`](serve.sh)**. That script starts **`python3 -m http.server`**, which is the process listening on **TCP port** **`${PORT:-8000}`** (connect at **`http://127.0.0.1:`** that port).
+
+**Ctrl+C** stops the server (when run in the foreground). Background:
+
+```sh
+nohup sh -c '
+[ -f App/serve.sh ] && exec sh App/serve.sh
+top=$(git rev-parse --show-toplevel 2>/dev/null)
+[ -n "$top" ] && cd "$top" && exec sh ./serve.sh
+exit 1
+' > ~/.localhost-8000.log 2>&1 &
+```
+
+Check whether port **8000** is already listening (**`PORT`** if you changed it, e.g. **9000**):
+
+```sh
+lsof -nP -iTCP:8000 -sTCP:LISTEN
+```
+
+Stop whatever is listening on that port (Unix):
+
+```sh
+pids=$(lsof -nP -iTCP:8000 -sTCP:LISTEN -t)
+[ -n "$pids" ] && kill $pids
+```
+
+Use **`lsof -nP -iTCP:8000 -sTCP:LISTEN`** only **while `serve.sh` is supposed to be running** (use your **`PORT`** in place of **8000** if you set one) — you should see **Python**; if the list is empty, the preview server is not up (other listeners on **127.0.0.1** are unrelated).
 
 ## Using the app
 
@@ -50,50 +82,7 @@ Avoid opening **`index.html` via `file://`**: the loader uses `fetch("./app.wasm
 - `app.wasm` — compiled Rust/Wasm stamp indexer (rebuild via `build-wasm.sh`).
 - `indexer/` — Rust source for local transaction parsing, stamp payload extraction, metadata normalization, and media detection.
 - `images/` — static assets including GitHub readme header art under `images/github/`.
-- `serve.sh` — **`python3 -m http.server`** on port **8000** (serves this folder; safe to run from a parent directory).
-
-## Local preview
-
-**Exit 127** means **`serve.sh` was not found** in your current directory — no server started, so the browser shows **connection refused**.
-
-From **`App/`** (this README’s folder):
-
-```sh
-sh ./serve.sh
-```
-
-From the **parent of `App/`** (e.g. `Stamp Validator/`):
-
-```sh
-sh App/serve.sh
-```
-
-If a **`serve.sh`** also exists in that parent, **`sh ./serve.sh`** there forwards to **`App/`** — same effect.
-
-Stop with **Ctrl+C**.
-
-Background:
-
-```sh
-# From App/
-nohup sh ./serve.sh > ~/.localhost-8000.log 2>&1 &
-
-# From parent of App/
-nohup sh App/serve.sh > ~/.localhost-8000.log 2>&1 &
-```
-
-Stop whatever is listening on **8000**:
-
-```sh
-pids=$(lsof -nP -iTCP:8000 -sTCP:LISTEN -t)
-[ -n "$pids" ] && kill $pids
-```
-
-Check whether port **8000** is already listening:
-
-```sh
-lsof -nP -iTCP:8000 -sTCP:LISTEN
-```
+- `serve.sh` — starts the **HTTP listener** (**`python3 -m http.server`**) for local preview, optional env **`PORT`**, opens the UI in the default browser.
 
 ## Build Wasm
 
