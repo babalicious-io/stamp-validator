@@ -4,7 +4,15 @@ All notable releases of **Stamp Validator** are documented here.
 
 ---
 
-## [1.0.0] — 2026-04-30
+## [1.1] — 2026-05-01
+
+### Added
+
+- **HTML stamp descriptions** — Extracts and displays `<meta name="description">` content beneath the title when available.
+
+---
+
+## [1.0] — 2026-04-30
 
 **Status:** Production ready.
 
