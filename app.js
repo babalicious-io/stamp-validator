@@ -34,7 +34,7 @@ const PROVIDERS = {
 /* ===================================================================
    METADATA KEY LISTS
    =================================================================== */
-const HTML_STAMP_DATA_KEYS = ["html_title", "html_author"];
+const HTML_STAMP_DATA_KEYS = ["html_title", "html_description", "html_author"];
 const BLOCK_DETAIL_TOP_KEYS = ["tx_hash"];
 const STAMP_MEDIA_DATA_KEYS = ["stamp_mimetype", "file_size_bytes"];
 

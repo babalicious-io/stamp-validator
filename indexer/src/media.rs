@@ -40,6 +40,8 @@ pub struct MediaResult {
     pub file_size_bytes: Option<usize>,
     /// Contents of `<title>` if the payload is HTML.
     pub html_title: Option<String>,
+    /// Contents of `<meta name="description">` if the payload is HTML.
+    pub html_description: Option<String>,
     /// Contents of `<meta name="author">` if the payload is HTML.
     pub html_author: Option<String>,
 }
@@ -56,6 +58,7 @@ impl MediaResult {
             is_valid_base64: false,
             file_size_bytes: None,
             html_title: None,
+            html_description: None,
             html_author: None,
         }
     }
@@ -95,6 +98,7 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>) {
                 is_valid_base64: false,
                 file_size_bytes: Some(text.len()),
                 html_title: None,
+                html_description: None,
                 html_author: None,
             },
             json,
@@ -160,6 +164,7 @@ pub fn media_from_payload(payload: &[u8]) -> (MediaResult, Option<Value>) {
             is_valid_base64: has_renderable_data_url,
             file_size_bytes: Some(payload.len()),
             html_title: html_metadata.title,
+            html_description: html_metadata.description,
             html_author: html_metadata.author,
         },
         None,
@@ -214,6 +219,7 @@ fn parse_data_url(description: &str) -> Option<MediaResult> {
         is_valid_base64: true,
         file_size_bytes: decoded_base64_size(body),
         html_title: html_metadata.title,
+        html_description: html_metadata.description,
         html_author: html_metadata.author,
     })
 }
@@ -246,6 +252,7 @@ fn parse_src_protocol_media(value: &Value) -> Option<MediaResult> {
         base64: None,
         is_valid_base64: false,
         html_title: None,
+        html_description: None,
         html_author: None,
     })
 }
@@ -254,9 +261,10 @@ fn parse_src_protocol_media(value: &Value) -> Option<MediaResult> {
 //   HTML PARSING
 // ===================================================================
 
-/// Title and author metadata extracted from an HTML document.
+/// Title, description, and author metadata extracted from an HTML document.
 struct HtmlMetadata {
     title: Option<String>,
+    description: Option<String>,
     author: Option<String>,
 }
 
@@ -264,13 +272,14 @@ impl HtmlMetadata {
     fn empty() -> Self {
         Self {
             title: None,
+            description: None,
             author: None,
         }
     }
 }
 
-/// Extracts `<title>` text and `<meta name="author">` content from an HTML
-/// string using lightweight string scanning (no DOM parser).
+/// Extracts `<title>` text and selected `<meta name="...">` content from an
+/// HTML string using lightweight string scanning (no DOM parser).
 fn extract_html_metadata(html: &str) -> HtmlMetadata {
     HtmlMetadata {
         title: extract_between_case_insensitive(html, "<title", "</title>").and_then(|value| {
@@ -279,13 +288,14 @@ fn extract_html_metadata(html: &str) -> HtmlMetadata {
                 .map(|(_, title)| html_unescape(title.trim()))
                 .filter(|title| !title.is_empty())
         }),
-        author: extract_meta_author(html),
+        description: extract_meta_content(html, "description"),
+        author: extract_meta_content(html, "author"),
     }
 }
 
-/// Scans `html` for `<meta name="author">` tags and returns the `content`
-/// attribute value of the first match found.
-fn extract_meta_author(html: &str) -> Option<String> {
+/// Scans `html` for `<meta name="{meta_name}">` tags and returns the
+/// `content` attribute value of the first match found.
+fn extract_meta_content(html: &str, meta_name: &str) -> Option<String> {
     let lower = html.to_ascii_lowercase();
     let mut cursor = 0;
 
@@ -296,14 +306,13 @@ fn extract_meta_author(html: &str) -> Option<String> {
             .map(|relative_end| start + relative_end)
             .unwrap_or(html.len());
         let tag = &html[start..end];
-        let tag_lower = &lower[start..end];
 
-        if tag_lower.contains("name=\"author\"")
-            || tag_lower.contains("name='author'")
-            || tag_lower.contains("name=author")
+        if extract_attribute(tag, "name")
+            .as_deref()
+            .is_some_and(|name| name.eq_ignore_ascii_case(meta_name))
         {
-            if let Some(author) = extract_attribute(tag, "content") {
-                return Some(author);
+            if let Some(content) = extract_attribute(tag, "content") {
+                return Some(content);
             }
         }
 
@@ -567,12 +576,17 @@ mod tests {
     fn renders_raw_html_payloads_as_iframe_media() {
         let (media, json) = media_from_payload(
             b"<!DOCTYPE html><html><head><title>Stamp Title</title>\
+              <meta name=\"description\" content=\"A small onchain HTML stamp\">\
               <meta name=\"author\" content=\"Satoshi\"></head><body>Stamp</body></html>",
         );
 
         assert_eq!(media.kind, "html");
         assert_eq!(media.mimetype.as_deref(), Some("text/html"));
         assert_eq!(media.html_title.as_deref(), Some("Stamp Title"));
+        assert_eq!(
+            media.html_description.as_deref(),
+            Some("A small onchain HTML stamp")
+        );
         assert_eq!(media.html_author.as_deref(), Some("Satoshi"));
         assert!(media
             .data_url
@@ -609,13 +623,18 @@ mod tests {
 
     #[test]
     fn extracts_html_metadata_from_base64_data_url() {
-        let html =
-            "<html><head><title>Encoded Stamp</title><meta content='Ada' name='author'></head></html>";
+        let html = "<html><head><title>Encoded Stamp</title>\
+            <meta content='Encoded description' name='description'>\
+            <meta content='Ada' name='author'></head></html>";
         let encoded = base64_encode(html.as_bytes());
         let media = parse_data_url(&format!("data:text/html;base64,{encoded}")).unwrap();
 
         assert_eq!(media.kind, "html");
         assert_eq!(media.html_title.as_deref(), Some("Encoded Stamp"));
+        assert_eq!(
+            media.html_description.as_deref(),
+            Some("Encoded description")
+        );
         assert_eq!(media.html_author.as_deref(), Some("Ada"));
     }
 }

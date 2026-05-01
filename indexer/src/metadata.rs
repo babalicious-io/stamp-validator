@@ -203,6 +203,7 @@ fn build_metadata(
     push(&mut fields, "stamp_hash", "Stamp Hash", stamp_hash, "local hash rule from btc_stamps indexer");
     push(&mut fields, "stamp_mimetype", "File Type", opt_string(media.mimetype.clone()), "payload");
     push(&mut fields, "html_title", "Title", opt_string(media.html_title.clone()), "payload HTML");
+    push(&mut fields, "html_description", "Description", opt_string(media.html_description.clone()), "payload HTML");
     push(&mut fields, "html_author", "Artist", opt_string(media.html_author.clone()), "payload HTML");
     push(&mut fields, "file_hash", "File Hash", file_hash, "payload md5");
     push(&mut fields, "file_size_bytes", "File Size", media.file_size_bytes.map(Value::from).unwrap_or(Value::Null), "payload");
