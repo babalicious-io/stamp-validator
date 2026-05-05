@@ -37,7 +37,6 @@
   --color-neutral-900: #18181b;
   --color-neutral-950: #09090b;
   --color-neutral-1000: #000000;
-  --color-neutral-gradient: linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-900));
 
   --color-status-red: #EF4444;
   --color-status-green: #22C55E;
@@ -74,7 +73,7 @@
   --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-0) 50%, var(--color-neutral-100) 100%);
   --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-0) 60%, var(--color-neutral-50) 100%);
   --theme-container-4:        var(--color-neutral-50);
-  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-100));
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
   --theme-container-4-border: var(--color-neutral-200);
   --theme-text:               var(--color-neutral-600);
   --theme-text-muted:         var(--color-neutral-400);
@@ -822,7 +821,7 @@ input::placeholder {
     --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%);
     --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%);
     --theme-container-4:        var(--color-neutral-950);
-    --theme-container-border:   var(--color-neutral-gradient);
+    --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
     --theme-container-4-border: var(--color-neutral-800);
     --theme-text:               var(--color-neutral-300);
     --theme-text-muted:         var(--color-neutral-500);
@@ -838,7 +837,7 @@ input::placeholder {
   --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%);
   --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%);
   --theme-container-4:        var(--color-neutral-950);
-  --theme-container-border:   var(--color-neutral-gradient);
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
   --theme-container-4-border: var(--color-neutral-700);
   --theme-text:               var(--color-neutral-300);
   --theme-text-muted:         var(--color-neutral-500);
@@ -853,7 +852,7 @@ input::placeholder {
   --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-0) 50%, var(--color-neutral-100) 100%);
   --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-0) 60%, var(--color-neutral-50) 100%);
   --theme-container-4:        var(--color-neutral-50);
-  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-100));
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
   --theme-container-4-border: var(--color-neutral-200);
   --theme-text:               var(--color-neutral-600);
   --theme-text-muted:         var(--color-neutral-400);
