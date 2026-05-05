@@ -78,7 +78,6 @@
   --theme-container-4-border: var(--color-neutral-200);
   --theme-text:               var(--color-neutral-600);
   --theme-text-muted:         var(--color-neutral-400);
-
 }
 
 /* ===== Keyboard focus - all focusable elements ===== */
@@ -435,6 +434,10 @@ select {
 
 input[aria-invalid="true"] {
   border-color: var(--color-status-red);
+}
+
+input::placeholder {
+  color: var(--theme-text-muted);
 }
 
 /* ===================================================================
