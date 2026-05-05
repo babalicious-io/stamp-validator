@@ -1,4 +1,5 @@
 ---
+description: Stamp Validator core project rules — constraints, HTML/JS patterns, and Rust/Wasm guidance.
 alwaysApply: true
 ---
 # Stamp Validator Core Rules
@@ -8,7 +9,7 @@ Build a small, self-contained Internet Archive page that lets users look up Bitc
 ## Project Constraints
 
 - Keep the app portable for the Internet Archive: no CDN dependencies, tracking scripts, external CSS frameworks, or build-time assumptions that require a hosted backend.
-- During development, prefer split files such as `index.html`, `styles.css`, `app.js`, and `.wasm` assets for maintainability.
+- During development, prefer split files such as `index.html`, `app.css`, `app.js`, and `.wasm` assets for maintainability.
 - For Internet Archive release, either keep split files with relative paths or bundle CSS/JS into `index.html` when maximum portability is more important.
 - Load CSS, JS, and Wasm from the same IA item using relative paths; do not depend on third-party origins.
 - Treat the Bitcoin tx hash as untrusted input. Accept only 64-character hex strings, normalize casing, and show user-friendly errors.
@@ -16,11 +17,11 @@ Build a small, self-contained Internet Archive page that lets users look up Bitc
 
 ## HTML, CSS, and JavaScript
 
-- Use semantic HTML5: `main`, `form`, `label`, `output`, `section`, and meaningful headings.
-- Keep UI accessible: associated labels, keyboard-operable controls, visible focus states, status text with `aria-live`, and sufficient contrast.
-- Use responsive CSS with flexbox/grid, relative units, and small-screen-first layout.
-- Avoid inline styles and global naming collisions; use descriptive class and ID names such as `stamp-search-form` and `stamp-result-card`.
-- Use modern vanilla JavaScript: `const`/`let`, `defer` for external scripts, modules only when compatible with the IA deployment plan, `fetch`, `async`/`await`, and small pure helper functions.
+- Use semantic HTML5: `main`, `form`, `fieldset`, `label`, `section`, `article`, `details`/`summary`, `dl`/`dt`/`dd`, and meaningful headings.
+- Keep UI accessible: associated labels, keyboard-operable controls, visible `:focus-visible` states, status text with `aria-live`, and sufficient contrast.
+- Use desktop-first CSS: `max-width` media queries at the bottom of the file, static `rem`/`px` values, flexbox/grid layouts. See `css.mdc` for naming and design system rules.
+- Avoid inline styles; follow the BEM-lite naming pattern defined in `css.mdc`.
+- Use modern vanilla JavaScript: `const`/`let`, `defer` for external scripts, `fetch`, `async`/`await`, and small pure helper functions.
 - Render user-controlled data with `textContent`, not `innerHTML`, unless the HTML is fully trusted and sanitized.
 - Handle loading, empty, error, and successful states explicitly.
 
@@ -31,19 +32,17 @@ Build a small, self-contained Internet Archive page that lets users look up Bitc
 - Keep DOM access, network fetches, storage, and UI state in JavaScript unless there is a strong reason to expose them through Wasm bindings.
 - Use `Result` and `Option` for fallible paths; avoid `unwrap()`/`expect()` in code reachable from user input.
 - Prefer custom errors or `thiserror` for library code; convert errors crossing into JS into concise, user-safe messages.
-- Minimize Wasm size: avoid unnecessary crates/features, avoid panicking paths, and consider release builds with size optimization.
+- Minimize Wasm size: avoid unnecessary crates/features, avoid panicking paths, and use release builds with size optimization.
 - Avoid `unsafe` unless required by a Wasm binding or parser boundary, and document the invariant.
 
 ## Async and Data Flow
 
 - Browser async work should be cancellable or race-safe: disable duplicate submits or ignore stale responses.
 - Add timeouts/retries only around network calls where failure modes are known; do not hide persistent data errors.
-- If reusing Rust indexer code that uses `tokio`, isolate browser-compatible logic behind a library layer and keep server-only async/database code out of the Wasm target.
 - Prefer structured data formats and parsers over ad hoc string manipulation for Bitcoin transaction and stamp metadata.
 
 ## Testing and Verification
 
 - Test tx hash validation with valid, invalid length, non-hex, uppercase, lowercase, and whitespace cases.
-- Test Rust logic with unit tests and Wasm-compatible tests where practical.
-- Validate HTML/CSS with standard validators and check accessibility basics with keyboard navigation and screen-reader-friendly status updates.
+- Validate HTML/CSS with standard validators; check accessibility basics with keyboard navigation and screen-reader-friendly status updates.
 - Manually test in Chromium, Firefox, and Safari, plus narrow mobile viewport sizes.

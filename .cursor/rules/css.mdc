@@ -1,0 +1,106 @@
+---
+description: CSS design system rules — tokens, naming, containers, theming, and component patterns for Stamp Validator.
+globs: **/*.css, **/*.html
+alwaysApply: false
+---
+# CSS Design System
+
+Full conventions are in `/.cursor/docs/DESIGN_CSS3.md`. Key rules below.
+
+## Tokens — Never Hardcode Values
+
+All design tokens live in `:root`. Never use raw hex, px shadow, or border values outside `:root`.
+
+| Prefix | Example |
+| --- | --- |
+| `--color-primary-*` | `--color-primary-500: #f97316` |
+| `--color-neutral-*` | `--color-neutral-900: #18181b` |
+| `--color-status-*` | `--color-status-red/green/orange/neutral` |
+| `--size-*` | `--size-16: 1rem` (named after px equivalent) |
+| `--border-radius-*` | `--border-radius-1/2/3/round` |
+| `--shadow-*` | `--shadow-1` (outermost) → lighter per inner layer |
+
+## Semantic Theme Layer
+
+Use `--theme-*` tokens for any value that differs between light and dark mode. Never use `--color-*` tokens directly in component rules where theming applies.
+
+```css
+/* :root sets light defaults; overridden in two places */
+@media (prefers-color-scheme: dark) { :root { --theme-text: var(--color-neutral-300); } }
+[data-theme="dark"]  { --theme-text: var(--color-neutral-300); } /* manual override */
+[data-theme="light"] { --theme-text: var(--color-neutral-600); } /* restores light when OS is dark */
+```
+
+JS sets `document.documentElement.dataset.theme`; CSS reads `[data-theme]`. Never toggle dark-mode classes.
+
+## Naming — BEM-lite, Kebab-case
+
+```
+.block {}
+.block-element {}
+.block-modifier {}
+.block-element-modifier {}
+```
+
+- Always kebab-case. No camelCase, PascalCase, or underscores.
+- Single dashes only — no double dashes.
+- Numbered tiers for structural depth: `.container-1`, `.container-2`, `.container-3`
+
+## Containers
+
+Each tier maps to a matching radius, shadow, and gradient-border background:
+
+```css
+.container-1 { border-radius: var(--border-radius-1); box-shadow: var(--shadow-1); }
+.container-2 { border-radius: var(--border-radius-2); }
+.container-3 { border-radius: var(--border-radius-3); }
+```
+
+Gradient borders use a two-layer `background`: `padding-box` fill + `border-box` gradient, with `border-color: transparent`. Never use `border-image` alongside `border-radius` — they are incompatible.
+
+## Property Order (within a rule)
+
+1. Positioning (`position`, `top`, `z-index`)
+2. Display & layout (`display`, `flex-*`, `grid-*`, `align-*`, `justify-*`)
+3. Box model (`width`, `height`, `padding`, `margin`, `border`, `border-radius`)
+4. Typography (`font-*`, `line-height`, `text-*`, `letter-spacing`)
+5. Visual (`color`, `background`, `box-shadow`, `opacity`, `overflow`)
+6. Interaction (`cursor`, `pointer-events`, `transition`, `transform`)
+
+Always list explicit properties in `transition` — never `transition: all`.
+
+## State — JS Sets ARIA, CSS Reads It
+
+| State | JS sets | CSS selector |
+| --- | --- | --- |
+| Validation error | `aria-invalid="true"` | `input[aria-invalid="true"]` |
+| Toggle active | `aria-pressed="true"` | `.toggle[aria-pressed="true"]` |
+| Active tab | `aria-selected="true"` | `.tab[aria-selected="true"]` |
+| Theme | `data-theme="dark"` | `[data-theme="dark"]` |
+| Collapsible open | native `[open]` | `.collapsible[open]` |
+
+Never add/remove CSS classes for state that ARIA attributes or `[open]` already track.
+
+## Component Patterns
+
+**Collapsible** — `<details>`/`<summary>` with `::details-content` animation (`block-size`, `opacity`, `content-visibility`). Icon rotation is purely CSS: `.collapsible[open] .collapsible-toggle-icon { transform: rotate(45deg); }` — no JS class toggle.
+
+**Toast** — `.message` base + `.success / .error / .loading` variants. Use `role="status" aria-live="polite"` for confirmations; `role="alert"` for errors. `pointer-events: none` on the base; re-enable on active variants.
+
+**Toggle switch** — native `<input type="checkbox" role="switch">` visually hidden; track/thumb styled via sibling `+` and `:checked` selectors. No JS needed for visuals.
+
+**Select** — `appearance: none` with a custom chevron injected via `background` shorthand (SVG `url()` + container color).
+
+## File Structure & Responsive
+
+Sections in order: imports → `:root` → body → nav/layout → typography → form controls → icons → buttons → components → feature-specific → media queries.
+
+All `@media` blocks go at the **bottom** of the file — never inline inside a component. Desktop-first using `max-width`:
+
+| Name | Value |
+| --- | --- |
+| Small | `max-width: 768px` |
+| XSmall | `max-width: 520px` |
+| XXSmall | `max-width: 400px` |
+
+Only override properties that genuinely differ at each breakpoint.
