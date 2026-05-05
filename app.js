@@ -1073,6 +1073,44 @@ txHashInput.addEventListener("input", () => {
 });
 
 /* ===================================================================
+   THEME TOGGLE
+   =================================================================== */
+(function () {
+  var toggle = document.getElementById('theme-toggle');
+  if (!toggle) return;
+
+  var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+  function effectiveTheme() {
+    var saved = localStorage.getItem('theme');
+    if (saved) return saved;
+    return mq.matches ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    toggle.checked = (theme === 'dark');
+    toggle.closest('label').setAttribute(
+      'aria-label',
+      theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+    );
+  }
+
+  applyTheme(effectiveTheme());
+
+  toggle.addEventListener('change', function () {
+    var next = toggle.checked ? 'dark' : 'light';
+    localStorage.setItem('theme', next);
+    applyTheme(next);
+  });
+
+  mq.addEventListener('change', function () {
+    localStorage.removeItem('theme');
+    applyTheme(mq.matches ? 'dark' : 'light');
+  });
+})();
+
+/* ===================================================================
    INITIALISATION
    =================================================================== */
 loadWasmIndexer().then((indexer) => {

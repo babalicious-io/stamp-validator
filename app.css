@@ -9,6 +9,7 @@
 /* ===== Root styles ===== */
 :root {
   interpolate-size: allow-keywords;
+  color-scheme: light;
 
   --color-primary-50: #fff7ed;
   --color-primary-100: #ffedd5;
@@ -36,7 +37,7 @@
   --color-neutral-900: #18181b;
   --color-neutral-950: #09090b;
   --color-neutral-1000: #000000;
-  --color-neutral-gradient: linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-900));
+  --color-neutral-gradient: linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
 
   --color-status-red: #EF4444;
   --color-status-green: #22C55E;
@@ -49,19 +50,35 @@
   --size-10: 0.625rem; /* 2.5 */
   --size-12: 0.75rem; /* 3 */
   --size-14: 0.875rem; /* 3.5 */
-  --size-16: 1rem; /* 4 */
-  --size-24: 1.5rem; /* 6 */
-  --size-36: 2.25rem; /* 9 */
-  --size-40: 2.5rem; /* 10 */
-  --size-48: 3rem; /* 12 */
+  --size-16: 1rem;    /* 16px */
+  --size-20: 1.25rem; /* 20px */
+  --size-24: 1.5rem;  /* 24px */
+  --size-36: 2.25rem; /* 36px */
+  --size-40: 2.5rem;  /* 40px */
+  --size-48: 3rem;    /* 48px */
+  --size-64: 4rem;    /* 64px */
+  --size-96: 6rem;    /* 96px */
 
   --border-width: 0.075rem;
   --border-radius-1: 2.25rem;
   --border-radius-2: 1.5rem;
   --border-radius-3: 0.75rem;
-  --border-radius-0: 999px;
+  --border-radius-round: 999px;
 
-  --shadow-card: 0 1rem 3rem rgba(9, 9, 11, 0.2);
+  --shadow-1: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+  /* Semantic theme tokens — light defaults */
+  --theme-logo:               var(--color-neutral-300);
+  --theme-container-0:        var(--color-neutral-100);
+  --theme-container-1:        linear-gradient(var(--color-neutral-50), var(--color-neutral-0));
+  --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-0) 50%, var(--color-neutral-100) 100%);
+  --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-0) 60%, var(--color-neutral-50) 100%);
+  --theme-container-4:        var(--color-neutral-50);
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
+  --theme-container-4-border: var(--color-neutral-200);
+  --theme-text:               var(--color-neutral-600);
+  --theme-text-muted:         var(--color-neutral-400);
+
 }
 
 /* ===== Keyboard focus - all focusable elements ===== */
@@ -84,19 +101,20 @@
 }
 
 html {
-  color: var(--color-neutral-300);
-  background: var(--color-neutral-800);
+  color: var(--theme-text);
+  background: var(--theme-container-0);
   font-family: Montserrat, Arial, sans-serif;
   font-weight: 400;
   font-size: var(--size-16);
   line-height: 1.5;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 body {
   display: flex;
   justify-content: center;
   min-width: 20rem;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: var(--size-24);
 }
 
@@ -115,12 +133,48 @@ main > footer {
   padding: var(--size-2) var(--size-12);
   font-size: var(--size-14);
   font-weight: 300;
-  color: var(--color-neutral-500);
+  color: var(--theme-text-muted);
 }
 
 main > footer p {
   margin: 0;
   text-align: right;
+}
+
+/* ===================================================================
+   NAV
+   =================================================================== */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-block: 0;
+  padding-inline-start: var(--size-4);
+}
+
+nav > svg {
+  color: var(--theme-logo);
+  transition: color 0.2s;
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-12);
+  color: var(--theme-text-muted);
+  font-size: var(--size-14);
+  font-weight: 400;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.nav-link:hover { color: var(--color-primary-500); }
+
+.nav-link[aria-current="page"] {
+  color: var(--color-primary-500);
+  cursor: default;
+  pointer-events: none;
 }
 
 /* ===================================================================
@@ -130,16 +184,16 @@ main > footer p {
 .container-1 {
   display: flex;
   flex-direction: column;
-  width: min(100%, 68rem);
+  width: min(100%, 1080px);
   height: fit-content;
   padding: var(--size-24) var(--size-24);
   gap: var(--size-24);
   border: var(--border-width) solid transparent;
   border-radius: var(--border-radius-1);
   background:
-    linear-gradient(var(--color-neutral-950), var(--color-neutral-1000)) padding-box,
-    var(--color-neutral-gradient) border-box;
-  box-shadow: var(--shadow-card);
+    var(--theme-container-1) padding-box,
+    var(--theme-container-border) border-box;
+  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 
@@ -151,8 +205,8 @@ main > footer p {
   border: var(--border-width) solid transparent;
   border-radius: var(--border-radius-2);
   background:
-    linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%) padding-box,
-    var(--color-neutral-gradient) border-box;
+    var(--theme-container-2) padding-box,
+    var(--theme-container-border) border-box;
   overflow: hidden;
 }
 
@@ -164,8 +218,8 @@ main > footer p {
   border: var(--border-width) solid transparent;
   border-radius: var(--border-radius-3);
   background:
-    linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%) padding-box,
-    var(--color-neutral-gradient) border-box;
+    var(--theme-container-3) padding-box,
+    var(--theme-container-border) border-box;
   overflow: hidden;
 }
 
@@ -174,8 +228,8 @@ main > footer p {
   width: fit-content;
   margin: 0;
   padding: var(--size-4) var(--size-8);
-  border-radius: var(--border-radius-0);
-  color: var(--color-neutral-1000);
+  border-radius: var(--border-radius-round);
+  color: var(--theme-container-4);
   background-color: var(--color-primary-500);
   font-size: var(--size-10);
   font-weight: 700;
@@ -201,10 +255,11 @@ main > footer p {
 /* ===== Row/column containers ===== */
 .container-row {
   display: flex;
+  flex-direction: row;
   justify-content: space-between;
 }
 
-.container-row--center {
+.container-row-center {
   align-items: center;
 }
 
@@ -232,60 +287,6 @@ main > footer p {
 
 
 /* ===================================================================
-   COLLAPSIBLE SECTIONS
-   =================================================================== */
-   .collapsible {
-    transition-behavior: allow-discrete;
-  }
-  
-  .collapsible::details-content {
-    block-size: 0;
-    overflow: hidden;
-    opacity: 0;
-    transition:
-      block-size 400ms ease-in-out,
-      content-visibility 400ms ease-in-out allow-discrete,
-      opacity 400ms ease-in-out;
-  }
-  
-  .collapsible[open]::details-content {
-    block-size: auto;
-    opacity: 1;
-  }
-  
-  .collapsible-header {
-    gap: var(--size-12);
-    list-style: none;
-    cursor: pointer;
-  }
-  
-  .collapsible-header::-webkit-details-marker {
-    display: none;
-  }
-  
-  .collapsible-toggle {
-    display: grid;
-    flex: 0 0 auto;
-    place-items: center;
-    margin-inline-start: auto;
-    width: var(--size-24);
-    height: var(--size-24);
-    background: transparent;
-  }
-  
-  .collapsible-toggle-icon {
-    display: block;
-    width: var(--size-24);
-    height: var(--size-24);
-    transition: transform 400ms ease-in-out;
-  }
-  
-  .collapsible[open] .collapsible-toggle-icon {
-    transform: rotate(45deg);
-  }
-
-  
-/* ===================================================================
    TEXT STYLES
    =================================================================== */
 h1,
@@ -293,10 +294,20 @@ h2,
 h3,
 h4,
 h5,
-h6,
+h6 {
+  margin-block-start: 0;
+  margin-block-end: 0;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+h1, h2, h3 { text-wrap: balance; }
+
 p {
   margin-block-start: 0;
 }
+
+p:last-child { margin-block-end: 0; }
 
 /* ===== Headings ===== */
 /* Primary colors */
@@ -304,7 +315,7 @@ h1 {
   margin-block-end: var(--size-4);
   max-width: 12ch;
   font-family: Montserrat, "Arial Black", Arial, sans-serif;
-  font-size: 6rem;
+  font-size: var(--size-96);
   font-weight: 800;
   letter-spacing: 0.02em;
   background: var(--color-primary-gradient);
@@ -331,13 +342,15 @@ h4 {
   margin-block-end: var(--size-4);
   font-size: var(--size-16);
   font-weight: 400;
-  color: var(--color-neutral-500);
+  color: var(--theme-text-muted);
 }
 
 /* ===== Anchor links ===== */
 a {
   color: var(--color-primary-400);
   text-decoration: none;
+  text-underline-offset: 0.2em;
+  transition: color 0.2s;
 }
 
 a:hover {
@@ -363,7 +376,7 @@ dt {
   margin: 0;
   font-size: var(--size-12);
   font-weight: 500;
-  color: var(--color-neutral-600);
+  color: var(--theme-text-muted);
   text-transform: uppercase;
 }
 
@@ -373,14 +386,8 @@ dd {
   margin: 0;
   font-size: var(--size-16);
   font-weight: 400;
-  color: var(--color-neutral-300);
+  color: var(--theme-text);
   overflow-wrap: anywhere;
-}
-
-.value-lg {
-  font-size: var(--size-24);
-  font-weight: 800;
-  color: var(--color-primary-600);
 }
 
 /* ===== Misc ===== */
@@ -392,7 +399,7 @@ dd {
   margin-block-end: calc(var(--size-8) * -1);
   font-size: var(--size-16);
   font-weight: 400;
-  color: var(--color-neutral-500);
+  color: var(--theme-text-muted);
 }
 
 
@@ -400,28 +407,30 @@ dd {
    FORM CONTROLS
    =================================================================== */
 .form-field {
-  display: grid;
-  gap: var(--size-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4);
 }
 
 input,
 select {
   width: 100%;
   padding: var(--size-8) var(--size-16);
-  border: var(--border-width) solid var(--color-neutral-700);
+  border: var(--border-width) solid var(--theme-container-4-border);
   border-radius: var(--border-radius-3);
-  color: var(--color-neutral-300);
-  background-color: var(--color-neutral-900);
+  color: var(--theme-text);
+  background-color: var(--theme-container-4);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 select {
   min-height: var(--size-24);
   appearance: none;
   padding-inline-end: calc(var(--size-24) + var(--size-16));
-  color: var(--color-neutral-300);
+  color: var(--theme-text);
   background:
     url("./images/icons/chevron-down.svg") right var(--size-8) center / 1.5rem 1.5rem no-repeat,
-    var(--color-neutral-900);
+    var(--theme-container-4);
 }
 
 input[aria-invalid="true"] {
@@ -451,13 +460,14 @@ input[aria-invalid="true"] {
   padding: var(--size-8) var(--size-16);
   border: var(--border-width) solid var(--color-primary-500);
   border-radius: var(--border-radius-3);
-  color: var(--color-neutral-900);
+  color: var(--theme-container-4);
   background: var(--color-primary-500);
+  font-size: var(--size-16);
   font-weight: 700;
   letter-spacing: 0.05rem;
   text-align: center;
-  cursor: pointer;
   white-space: nowrap;
+  cursor: pointer;
   transition: background-color 0.2s, color 0.2s, border-color 0.2s, opacity 0.2s;
 }
 
@@ -470,13 +480,13 @@ input[aria-invalid="true"] {
 .button-flat-primary {
   border: var(--border-width) solid var(--color-primary-500);
   background-color: var(--color-primary-500);
-  color: var(--color-neutral-900);
+  color: var(--theme-container-4);
 }
 
 .button-flat-primary:hover {
   border: var(--border-width) solid var(--color-primary-600);
   background-color: var(--color-primary-600);
-  color: var(--color-neutral-900);
+  color: var(--theme-container-4);
 }
 
 /* ===== Outline primary button ===== */
@@ -499,6 +509,143 @@ input[aria-invalid="true"] {
 }
 
 /* ===================================================================
+   TOGGLE SWITCH
+   =================================================================== */
+/* ===== Toggle switch ===== */
+.toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--size-12);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Hide the native input visually but keep it accessible */
+.toggle-switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch-slider {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Track */
+.toggle-switch-track {
+  display: inline-block;
+  width: 2.25rem;      /* 36px */
+  height: 1.25rem;     /* 20px */
+  border-radius: var(--border-radius-round);
+  background-color: var(--color-neutral-300);
+  transition: background-color 0.2s ease;
+  overflow: hidden;
+}
+
+/* Thumb */
+.toggle-switch-thumb {
+  position: absolute;
+  inset-block-start: 0.125rem;   /* 2px */
+  inset-inline-start: 0.125rem;  /* 2px */
+  width: 1rem;     /* 16px */
+  height: 1rem;    /* 16px */
+  border-radius: var(--border-radius-round);
+  background-color: var(--color-neutral-0);
+  transition: transform 0.2s ease;
+  z-index: 1;
+}
+
+/* Checked state — track changes color */
+.toggle-switch-input:checked + .toggle-switch-slider .toggle-switch-track {
+  background-color: var(--color-neutral-700);
+}
+
+/* Checked state — thumb slides to the right and changes color */
+.toggle-switch-input:checked + .toggle-switch-slider .toggle-switch-thumb {
+  transform: translateX(100%);
+  background-color: var(--color-neutral-900);
+}
+
+/* Disabled state */
+.toggle-switch-input:disabled + .toggle-switch-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toggle-switch:has(.toggle-switch-input:disabled) {
+  cursor: not-allowed;
+}
+
+/* Focus ring on keyboard navigation */
+.toggle-switch-input:focus-visible + .toggle-switch-slider .toggle-switch-track {
+  outline: var(--size-2) solid var(--color-primary-400);
+  outline-offset: var(--size-2);
+}
+
+
+/* ===================================================================
+   COLLAPSIBLE SECTIONS
+   =================================================================== */
+.collapsible {
+  transition-behavior: allow-discrete;
+}
+
+.collapsible::details-content {
+  block-size: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    block-size 400ms ease-in-out,
+    content-visibility 400ms ease-in-out allow-discrete,
+    opacity 400ms ease-in-out;
+}
+
+.collapsible[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+.collapsible-header {
+  gap: var(--size-12);
+  list-style: none;
+  cursor: pointer;
+}
+
+/* Hides native details marker across browsers */
+.collapsible-header::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-toggle {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  margin-inline-start: auto;
+  width: var(--size-24);
+  height: var(--size-24);
+  background: transparent;
+}
+
+.collapsible-toggle-icon {
+  display: block;
+  width: var(--size-24);
+  height: var(--size-24);
+  transition: transform 400ms ease-in-out;
+  mask: url('./images/icons/plus.svg') center / contain no-repeat;
+  -webkit-mask: url('./images/icons/plus.svg') center / contain no-repeat;
+  background-color: var(--theme-text-muted);
+}
+
+.collapsible[open] .collapsible-toggle-icon {
+  transform: rotate(45deg);
+}
+
+
+/* ===================================================================
    TOAST NOTIFICATION MESSAGE STYLES
    =================================================================== */
 
@@ -506,39 +653,37 @@ input[aria-invalid="true"] {
 .message {
   display: block;
   position: fixed;
-  top: var(--size-2xl);
+  top: var(--size-24);
   left: var(--size-24);
   width: 320px;
-  padding: var(--size-12) var(--size-16);
-  border-radius: 1.25rem;
-  font-family: Montserrat, Arial, sans-serif;
+  padding: var(--size-16) var(--size-20);
+  border-radius: var(--border-radius-2);
   font-size: var(--size-14);
   font-weight: 500;
-  color: var(--color-neutral-1000);
+  color: var(--color-neutral-900);
   background-color: var(--color-status-neutral);
   border: var(--border-width) solid var(--color-status-neutral);
-  line-height: 1.5;
-  letter-spacing: 0.05rem;
-  box-sizing: border-box;
+  line-height: 1.4;
+  letter-spacing: 0.03rem;
   white-space: pre-line;
-  box-shadow: var(--shadow-card);
-  z-index: 1000;
-  pointer-events: auto;
+  box-shadow: var(--shadow-1);
+  z-index: 999;
+  pointer-events: none;
 }
 
 .message.loading {
-  background-color: color-mix(in srgb, var(--color-status-neutral) 100%, transparent);
+  background-color: var(--color-status-neutral);
   border: var(--border-width) solid var(--color-status-neutral);
 }
 
 .message.success {
-  background-color: color-mix(in srgb, var(--color-status-green) 100%, transparent);
+  background-color: var(--color-status-green);
   border: var(--border-width) solid var(--color-status-green);
   pointer-events: auto;
 }
 
 .message.error {
-  background-color: color-mix(in srgb, var(--color-status-red) 100%, transparent);
+  background-color: var(--color-status-red);
   border: var(--border-width) solid var(--color-status-red);
   pointer-events: auto;
 }
@@ -591,7 +736,7 @@ input[aria-invalid="true"] {
     height: 100%;
     min-height: 12rem;
     overflow: hidden;
-    background: var(--color-neutral-1000);
+    background: var(--theme-container-border);
   }
   
   .media-frame img,
@@ -617,7 +762,7 @@ input[aria-invalid="true"] {
     padding: var(--size-16);
     overflow: auto;
     margin: 0;
-    color: var(--color-neutral-400);
+    color: var(--theme-text-muted);
     white-space: pre-wrap;
   }
 
@@ -660,15 +805,66 @@ input[aria-invalid="true"] {
 
   
 /* ===================================================================
+   THEME OVERRIDES
+   =================================================================== */
+
+/* Dark — system preference */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --theme-logo:               var(--color-neutral-700);
+    --theme-container-0:        var(--color-neutral-800);
+    --theme-container-1:        linear-gradient(var(--color-neutral-950), var(--color-neutral-1000));
+    --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%);
+    --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%);
+    --theme-container-4:        var(--color-neutral-950);
+    --theme-container-border:   var(--color-neutral-gradient);
+    --theme-container-4-border: var(--color-neutral-800);
+    --theme-text:               var(--color-neutral-300);
+    --theme-text-muted:         var(--color-neutral-500);
+  }
+}
+
+/* Dark — manual override */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --theme-logo:               var(--color-neutral-700);
+  --theme-container-0:        var(--color-neutral-800);
+  --theme-container-1:        linear-gradient(var(--color-neutral-950), var(--color-neutral-1000));
+  --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%);
+  --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%);
+  --theme-container-4:        var(--color-neutral-950);
+  --theme-container-border:   var(--color-neutral-gradient);
+  --theme-container-4-border: var(--color-neutral-700);
+  --theme-text:               var(--color-neutral-300);
+  --theme-text-muted:         var(--color-neutral-500);
+}
+
+/* Light — manual override (restores light when OS is dark) */
+[data-theme="light"] {
+  color-scheme: light;
+  --theme-logo:               var(--color-neutral-300);
+  --theme-container-0:        var(--color-neutral-100);
+  --theme-container-1:        linear-gradient(var(--color-neutral-50), var(--color-neutral-0));
+  --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-0) 50%, var(--color-neutral-100) 100%);
+  --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-0) 60%, var(--color-neutral-50) 100%);
+  --theme-container-4:        var(--color-neutral-50);
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
+  --theme-container-4-border: var(--color-neutral-200);
+  --theme-text:               var(--color-neutral-600);
+  --theme-text-muted:         var(--color-neutral-400);
+}
+
+/* ===================================================================
    RESPONSIVE LAYOUT
    =================================================================== */
-@media (max-width: 48rem) {
+@media (max-width: 768px) {
   .container-1 {
     padding-block: var(--size-48);
   }
 
   h1 {
-    font-size: 4rem;
+    font-size: var(--size-64);
   }
 
   h2 {
@@ -702,7 +898,7 @@ input[aria-invalid="true"] {
   }
 }
 
-@media (max-width: 32rem) {
+@media (max-width: 520px) {
   h1 {
     font-size: var(--size-48);
   }
@@ -723,7 +919,7 @@ input[aria-invalid="true"] {
   }
 }
 
-@media (max-width: 25rem) {
+@media (max-width: 400px) {
   h1 {
     font-size: var(--size-40);
   }
