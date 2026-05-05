@@ -154,7 +154,7 @@ nav {
 
 nav > svg {
   color: var(--theme-logo);
-  transition: color 0.2s;
+  transition: color 0.1s;
 }
 
 .nav-link {
