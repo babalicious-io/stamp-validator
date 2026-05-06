@@ -147,6 +147,179 @@ color: #d4d4d8;
 
 ---
 
+## Light / Dark Theme
+
+The project supports both light and dark modes through a layer of **semantic theme tokens**. The raw color palette (e.g. `--color-neutral-900`) never changes; only the semantic aliases are swapped per theme.
+
+### How it works
+
+1. **`:root`** holds the light-mode defaults for all `--theme-*` tokens.
+2. **`@media (prefers-color-scheme: dark)`** overrides the tokens when the OS is set to dark — no JavaScript needed.
+3. **`[data-theme="dark"]` / `[data-theme="light"]`** allow the user to override the OS preference. JavaScript sets this attribute on the `<html>` element.
+
+### Semantic token set
+
+All theme-sensitive values are abstracted behind a `--theme-` prefix. Component rules reference only these aliases — never raw palette tokens like `--color-neutral-800` for surfaces.
+
+| Token | Purpose |
+| --- | --- |
+| `--theme-logo` | SVG logo / wordmark fill color |
+| `--theme-container-0` | Page background |
+| `--theme-container-1` | Outermost card background (gradient) |
+| `--theme-container-2` | Inner panel background (gradient) |
+| `--theme-container-3` | Innermost panel background (gradient) |
+| `--theme-container-4` | Surface fill for inputs, selects, pills |
+| `--theme-container-border` | Gradient border for containers 1–3 |
+| `--theme-container-4-border` | Solid border for container-4 / inputs |
+| `--theme-text` | Primary body text |
+| `--theme-text-faded` | Secondary / muted text, labels |
+
+### Token definitions
+
+**Light (`:root` defaults):**
+
+```css
+:root {
+  color-scheme: light;
+
+  --theme-logo:               var(--color-neutral-300);
+  --theme-container-0:        var(--color-neutral-100);
+  --theme-container-1:        linear-gradient(var(--color-neutral-50), var(--color-neutral-0));
+  --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-0) 50%, var(--color-neutral-100) 100%);
+  --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-0) 60%, var(--color-neutral-50) 100%);
+  --theme-container-4:        var(--color-neutral-50);
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
+  --theme-container-4-border: var(--color-neutral-200);
+  --theme-text:               var(--color-neutral-600);
+  --theme-text-faded:         var(--color-neutral-400);
+}
+```
+
+**Dark — system preference:**
+
+```css
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --theme-logo:               var(--color-neutral-700);
+    --theme-container-0:        var(--color-neutral-800);
+    --theme-container-1:        linear-gradient(var(--color-neutral-950), var(--color-neutral-1000));
+    --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%);
+    --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%);
+    --theme-container-4:        var(--color-neutral-950);
+    --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
+    --theme-container-4-border: var(--color-neutral-800);
+    --theme-text:               var(--color-neutral-300);
+    --theme-text-faded:         var(--color-neutral-500);
+  }
+}
+```
+
+**Dark — manual override:**
+
+```css
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --theme-logo:               var(--color-neutral-700);
+  --theme-container-0:        var(--color-neutral-800);
+  --theme-container-1:        linear-gradient(var(--color-neutral-950), var(--color-neutral-1000));
+  --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-1000) 50%, var(--color-neutral-900) 100%);
+  --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-1000) 60%, var(--color-neutral-950) 100%);
+  --theme-container-4:        var(--color-neutral-950);
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
+  --theme-container-4-border: var(--color-neutral-700);
+  --theme-text:               var(--color-neutral-300);
+  --theme-text-faded:         var(--color-neutral-500);
+}
+```
+
+**Light — manual override (restores light when OS is dark):**
+
+```css
+[data-theme="light"] {
+  color-scheme: light;
+
+  --theme-logo:               var(--color-neutral-300);
+  --theme-container-0:        var(--color-neutral-100);
+  --theme-container-1:        linear-gradient(var(--color-neutral-50), var(--color-neutral-0));
+  --theme-container-2:        linear-gradient(to bottom, var(--color-neutral-0) 50%, var(--color-neutral-100) 100%);
+  --theme-container-3:        linear-gradient(to bottom, var(--color-neutral-0) 60%, var(--color-neutral-50) 100%);
+  --theme-container-4:        var(--color-neutral-50);
+  --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
+  --theme-container-4-border: var(--color-neutral-200);
+  --theme-text:               var(--color-neutral-600);
+  --theme-text-faded:         var(--color-neutral-400);
+}
+```
+
+### `color-scheme` property
+
+Always set `color-scheme` alongside the token overrides. This tells the browser which scheme to use for native UI elements (scrollbars, form controls, `<dialog>` backdrop) so they match the active theme.
+
+```css
+:root          { color-scheme: light; }  /* default */
+[data-theme="dark"]  { color-scheme: dark;  }
+[data-theme="light"] { color-scheme: light; }
+```
+
+### Theme toggle — JavaScript
+
+Set the `data-theme` attribute on `<html>` and persist the choice to `localStorage`. Remove the attribute entirely to fall back to the OS preference.
+
+```js
+const html = document.documentElement;
+
+function setTheme(theme) {
+  if (theme === 'system') {
+    html.removeAttribute('data-theme');
+    localStorage.removeItem('theme');
+  } else {
+    html.setAttribute('data-theme', theme);  /* 'light' | 'dark' */
+    localStorage.setItem('theme', theme);
+  }
+}
+
+/* Restore saved preference before first paint (place in <head>) */
+const saved = localStorage.getItem('theme');
+if (saved) html.setAttribute('data-theme', saved);
+```
+
+### CSS placement
+
+Place all theme overrides in a dedicated `THEME OVERRIDES` section, immediately before the `RESPONSIVE / MEDIA QUERIES` section at the bottom of the file.
+
+```
+...component rules...
+
+/* ===================================================================
+   THEME OVERRIDES
+   =================================================================== */
+@media (prefers-color-scheme: dark) { :root { ... } }
+[data-theme="dark"]  { ... }
+[data-theme="light"] { ... }
+
+/* ===================================================================
+   RESPONSIVE LAYOUT
+   =================================================================== */
+@media (max-width: 768px) { ... }
+```
+
+### Rules
+
+- **Never use raw palette tokens for surfaces or text in component rules.** Always use a `--theme-*` alias so the component adapts automatically to both themes.
+- **Add new `--theme-*` tokens only when a surface genuinely changes between themes.** Brand colors (primary scale, status colors) do not need theme tokens — they stay constant across modes.
+- **Transitions on `html`** smooth the switch when the user toggles manually. Scope them to the properties that actually change:
+
+```css
+html {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+```
+
+---
+
 ## Naming Conventions
 
 ### Class names

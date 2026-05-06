@@ -5,7 +5,7 @@ alwaysApply: false
 ---
 # CSS Design System
 
-Full conventions are in `/.cursor/docs/DESIGN_CSS3.md`. Key rules below.
+Full conventions are in `/.cursor/docs/css.md`. Key rules below.
 
 ## Tokens — Never Hardcode Values
 
@@ -24,14 +24,38 @@ All design tokens live in `:root`. Never use raw hex, px shadow, or border value
 
 Use `--theme-*` tokens for any value that differs between light and dark mode. Never use `--color-*` tokens directly in component rules where theming applies.
 
+**Available tokens:**
+
+| Token | Purpose |
+| --- | --- |
+| `--theme-logo` | SVG logo fill |
+| `--theme-container-0` | Page background |
+| `--theme-container-1` | Outermost card background (gradient) |
+| `--theme-container-2` | Inner panel background (gradient) |
+| `--theme-container-3` | Innermost panel background (gradient) |
+| `--theme-container-4` | Input / select / pill surface fill |
+| `--theme-container-border` | Gradient border for containers 1–3 |
+| `--theme-container-4-border` | Solid border for container-4 / inputs |
+| `--theme-text` | Primary body text |
+| `--theme-text-faded` | Secondary / muted text, labels |
+
+**Three override layers — always set `color-scheme` alongside the tokens:**
+
 ```css
-/* :root sets light defaults; overridden in two places */
-@media (prefers-color-scheme: dark) { :root { --theme-text: var(--color-neutral-300); } }
-[data-theme="dark"]  { --theme-text: var(--color-neutral-300); } /* manual override */
-[data-theme="light"] { --theme-text: var(--color-neutral-600); } /* restores light when OS is dark */
+/* :root sets light defaults */
+:root { color-scheme: light; --theme-text: var(--color-neutral-600); /* ... */ }
+
+/* System preference */
+@media (prefers-color-scheme: dark) {
+  :root { color-scheme: dark; --theme-text: var(--color-neutral-300); /* ... */ }
+}
+
+/* Manual overrides — JS sets document.documentElement.dataset.theme */
+[data-theme="dark"]  { color-scheme: dark;  --theme-text: var(--color-neutral-300); /* ... */ }
+[data-theme="light"] { color-scheme: light; --theme-text: var(--color-neutral-600); /* ... */ }
 ```
 
-JS sets `document.documentElement.dataset.theme`; CSS reads `[data-theme]`. Never toggle dark-mode classes.
+`color-scheme` tells the browser which scheme to use for native UI (scrollbars, form controls) so they match the active theme. Never toggle dark-mode classes — JS only writes `data-theme`.
 
 ## Naming — BEM-lite, Kebab-case
 

@@ -76,7 +76,7 @@
   --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
   --theme-container-4-border: var(--color-neutral-200);
   --theme-text:               var(--color-neutral-600);
-  --theme-text-muted:         var(--color-neutral-400);
+  --theme-text-faded:         var(--color-neutral-400);
 }
 
 /* ===== Keyboard focus - all focusable elements ===== */
@@ -131,7 +131,7 @@ main > footer {
   padding: var(--size-2) var(--size-12);
   font-size: var(--size-14);
   font-weight: 300;
-  color: var(--theme-text-muted);
+  color: var(--theme-text-faded);
 }
 
 main > footer p {
@@ -159,7 +159,7 @@ nav > svg {
   display: inline-flex;
   align-items: center;
   gap: var(--size-12);
-  color: var(--theme-text-muted);
+  color: var(--theme-text-faded);
   font-size: var(--size-14);
   font-weight: 400;
   text-decoration: none;
@@ -340,7 +340,7 @@ h4 {
   margin-block-end: var(--size-4);
   font-size: var(--size-16);
   font-weight: 400;
-  color: var(--theme-text-muted);
+  color: var(--theme-text-faded);
 }
 
 /* ===== Anchor links ===== */
@@ -374,7 +374,7 @@ dt {
   margin: 0;
   font-size: var(--size-12);
   font-weight: 500;
-  color: var(--theme-text-muted);
+  color: var(--theme-text-faded);
   text-transform: uppercase;
 }
 
@@ -397,7 +397,7 @@ dd {
   margin-block-end: calc(var(--size-8) * -1);
   font-size: var(--size-16);
   font-weight: 400;
-  color: var(--theme-text-muted);
+  color: var(--theme-text-faded);
 }
 
 
@@ -436,7 +436,7 @@ input[aria-invalid="true"] {
 }
 
 input::placeholder {
-  color: var(--theme-text-muted);
+  color: var(--theme-text-faded);
 }
 
 /* ===================================================================
@@ -639,7 +639,7 @@ input::placeholder {
   transition: transform 400ms ease-in-out;
   mask: url('./images/icons/plus.svg') center / contain no-repeat;
   -webkit-mask: url('./images/icons/plus.svg') center / contain no-repeat;
-  background-color: var(--theme-text-muted);
+  background-color: var(--theme-text-faded);
 }
 
 .collapsible[open] .collapsible-toggle-icon {
@@ -765,7 +765,7 @@ input::placeholder {
     padding: var(--size-16);
     overflow: auto;
     margin: 0;
-    color: var(--theme-text-muted);
+    color: var(--theme-text-faded);
     white-space: pre-wrap;
   }
 
@@ -824,7 +824,7 @@ input::placeholder {
     --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
     --theme-container-4-border: var(--color-neutral-800);
     --theme-text:               var(--color-neutral-300);
-    --theme-text-muted:         var(--color-neutral-500);
+    --theme-text-faded:         var(--color-neutral-500);
   }
 }
 
@@ -840,7 +840,7 @@ input::placeholder {
   --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-700), var(--color-neutral-800));
   --theme-container-4-border: var(--color-neutral-700);
   --theme-text:               var(--color-neutral-300);
-  --theme-text-muted:         var(--color-neutral-500);
+  --theme-text-faded:         var(--color-neutral-500);
 }
 
 /* Light — manual override (restores light when OS is dark) */
@@ -855,7 +855,7 @@ input::placeholder {
   --theme-container-border:   linear-gradient(to bottom, var(--color-neutral-300), var(--color-neutral-200));
   --theme-container-4-border: var(--color-neutral-200);
   --theme-text:               var(--color-neutral-600);
-  --theme-text-muted:         var(--color-neutral-400);
+  --theme-text-faded:         var(--color-neutral-400);
 }
 
 /* ===================================================================
