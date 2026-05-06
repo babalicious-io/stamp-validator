@@ -739,7 +739,7 @@ input::placeholder {
     height: 100%;
     min-height: 12rem;
     overflow: hidden;
-    background: var(--theme-container-border);
+    background: var(--theme-container-0);
   }
   
   .media-frame img,
