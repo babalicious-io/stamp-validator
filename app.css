@@ -739,7 +739,7 @@ input::placeholder {
     height: 100%;
     min-height: 12rem;
     overflow: hidden;
-    background: var(--theme-container-0);
+    background: var(--theme-container-4);
   }
   
   .media-frame img,
@@ -765,7 +765,7 @@ input::placeholder {
     padding: var(--size-16);
     overflow: auto;
     margin: 0;
-    color: var(--theme-text-faded);
+    color: var(--theme-text);
     white-space: pre-wrap;
   }
 
